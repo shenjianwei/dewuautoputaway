@@ -25,18 +25,22 @@ class App:
 
     默认的初始化配置参数
     """
+    DEBUGER = False
     # 参数
-    appVersions = "得物APP自动化脚本 V0.3.1"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.3.2"  # 项目信息
     enterDeposit = 0  # 保证金
+    enterDepositPlenty = True  # 保证金是否充足
     intervalTime = 10  # 执行间隔时间（秒）
     token = ""  # Token值
     url = 'https://stark.dewu.com'  # 请求域名
     api = url + '/api/v1/h5/biz'  # 请求地址
     dewuTokenFilePath = "./dewuToken.txt"
+    root = ""
     # 进程相关参数
     endThread = False  # 进程管理
     endCycleThread = False  # 循环进程管理
     startCycleTasks = False  # 是否开始循环任务
+    startCycle = False  # 是否开始循环任务2
     autoNum = 0  # 自动循环次数
     firstPutaway = False  # 是否第一次执行 用于修改价格过低的输入框清除重置操作
     firstGetSubNum = False  # 是否第一次进订单 第一次，则默认使用最大订单号，作为之后的比较用
@@ -111,6 +115,14 @@ class App:
         # button1.grid(row=0, column=1)
         tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
 
+        if self.DEBUGER:
+            tk.Button(self.root, text="读取文本数据", command=lambda: self.thread_it(App.test, self, "read")).pack(side="left")
+            tk.Button(self.root, text="测试下架", command=lambda: self.thread_it(App.test, self, "down")).pack(side="left")
+            tk.Button(self.root, text="测试上架", command=lambda: self.thread_it(App.test, self, "up")).pack(side="left")
+            tk.Button(self.root, text="测试修改价格", command=lambda: self.thread_it(App.test, self, "update")).pack(side="left")
+            tk.Button(self.root, text="测试订单", command=lambda: self.thread_it(App.test, self, "order")).pack(side="left")
+
+
         # 初始化获得Token
         self.thread_it(App.getToken, self)
         self.root.mainloop()
@@ -174,27 +186,29 @@ class App:
                     self.endThreadIt()
                 time.sleep(1)
 
-                # 上架商品操作
-                # TODO 上架添加查询是否有上架操作
-                self.textLog("======================================上架操作======================================", "sub")
-                self.textLog("开始上架操作")
-                for item in self.saleGoodsList:
-                    if self.endThread:
-                        self.endThreadIt()
-                    no = str(item[0])
-                    # 搜索货号，判断有无相关商品
-                    self.textLog("查询商品：货号：" + no)
-                    goods = self.searchGoods(item[0])
-                    if len(goods) > 0:
-                        spuId = goods[0]["spuId"]
-                        # 查询商品详情
-                        self.upGoods(spuId, item, no)
-                    else:
-                        self.textLog("未查询到商品，跳过出价\n", "error")
-                    time.sleep(1)
+            # 上架商品操作
+            # TODO 上架添加查询是否有上架操作
+            self.textLog("======================================上架操作======================================", "sub")
+            self.textLog("开始上架操作\n")
+            for item in self.saleGoodsList:
+                if self.endThread:
+                    self.endThreadIt()
+                no = str(item[0])
+                # 搜索货号，判断有无相关商品
+                self.textLog("查询商品：货号：" + no)
+                goods = self.searchGoods(item[0])
+                if len(goods) > 0:
+                    spuId = goods[0]["spuId"]
+                    # 查询商品详情
+                    if not self.enterDepositPlenty: # 保证金不足跳出循环
+                        break
+                    self.upGoods(spuId, item, no)
+                else:
+                    self.textLog("未查询到商品，跳过出价\n", "error")
+                time.sleep(1)
 
-                self.firstPutaway = False
-                self.textLog("======================================上架操作结束======================================", "sub")
+            self.firstPutaway = False
+            self.textLog("======================================上架操作结束======================================", "sub")
 
             self.startCycleTasks = True  # 标记循环任务开启
             self.doWileChangePrice()
@@ -204,9 +218,13 @@ class App:
             self.setStartBtn()
 
     def doWileChangePrice(self):
-        while True:
-            self.timeSleep(self.intervalTime)
-            self.changeGoodsPrice()
+        if not self.startCycle:
+            while True:
+                timeSleepStop = self.timeSleep(self.intervalTime)
+                if timeSleepStop:
+                    break
+                else:
+                    self.changeGoodsPrice()
 
     def endThreadIt(self):
         self.textLog("进程结束", "info")
@@ -405,8 +423,9 @@ class App:
         messagebox.showinfo("消息", "设置成功，将在下一次执行生效")
 
         if self.startCycleTasks:  # 标记任务在执行时，立马结束上个进程，等待下个进程重新进入
+            """ 间隔时间操作 """
             """主要解决定时30分钟的时候，能够修改为此次等待时间"""
-            self.endCycleThread = True
+            self.endCycleThread = True  # 结束上一个循环
             time.sleep(3)
             self.endCycleThread = False
             self.doWileChangePrice()
@@ -426,6 +445,11 @@ class App:
         else:
             price = item[2]  # 库存价
             goodsDetail = self.getGoodsDetail(spuId)
+            if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
+                if len(goodsDetail["detailResponseList"]) > 0:
+                    self.textLog("已在出价\n", "warning")
+                    return True
+
             if not ("poundageInfoList" in goodsDetail):
                 self.textLog("查询接口失败：取消商品[" + no + "]上架\n", "error")
             else:
@@ -477,6 +501,7 @@ class App:
         修改价格
         :return:
         """
+        self.startCycle = True
         self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
         self.firstPutaway = False
 
@@ -488,6 +513,7 @@ class App:
         updateCount = 0  # 更新数量
         successCount = 0  # 更新成功数量
         errorCount = 0  # 更新失败数量
+        upCount = 0  # 更新失败数量
         for item in self.saleGoodsList:  # 循环库存
             if self.endThread:
                 self.endThreadIt()
@@ -552,29 +578,34 @@ class App:
             else:
                 """与仓库商品未查询到，操作上架"""
                 # 搜索货号，判断有无相关商品
-                self.textLog("查询商品：货号：" + no)
-                goods = self.searchGoods(item[0])
-                if len(goods) > 0:
-                    spuId = goods[0]["spuId"]
-                    # 查询商品详情
-                    self.upGoods(spuId, item, no)
-                else:
-                    self.textLog("未查询到商品，跳过出价\n", "error")
+                if self.enterDepositPlenty:  # 保证金不足跳出循环
+                    self.textLog("查询商品：货号：" + no)
+                    goods = self.searchGoods(item[0])
+                    if len(goods) > 0:
+                        spuId = goods[0]["spuId"]
+                        # 查询商品详情
+                        upGoods = self.upGoods(spuId, item, no)
+                        if upGoods:
+                            upCount += 1
+                    else:
+                        self.textLog("未查询到商品，跳过出价\n", "error")
 
             time.sleep(1)
         self.firstPutaway = False  # 回复状态，用于下次循环清空数据
         self.textLog("[修改操作统计：总数：" + str(updateCount) + "；未做修改：" + str(notUpdateCount) + "；修改成功：" + str(
-            successCount) + "；修改失败：" + str(errorCount) + "；]\n")
+            successCount) + "；修改失败：" + str(errorCount) + "；新上架：" + str(upCount) + "]\n")
 
         if not haveUpdate:  # 未做更新
             self.textLog("无商品可以进行更新价格\n")
 
         # # TODO 打包时打开
-        self.updateOrder()
+        if not self.DEBUGER:
+            self.updateOrder()
 
         # 每1分钟执行一次
         self.textLog("======================================第 " +
                      str(self.autoNum) + " 次循环结束======================================\n", "sub")
+        self.startCycle = False
 
     def updateOrder(self):
         """
@@ -602,6 +633,8 @@ class App:
 
             # 新增订单业务操作
             for orderItem in orderList:
+                if self.endThread:
+                   self.endThreadIt()
                 if int(orderItem["subOrderNo"]) > int(self.orderSubNum):  # 比对订单号：有订单号大于存储的订单号，说明有新订单
                     for saleItem in self.saleGoodsList:  # 查找匹配的库存商品
                         if saleItem[0] == orderItem['articleNumber']:
@@ -740,6 +773,7 @@ class App:
         :param times:
         :return:
         """
+        stopTimeSleep = False
         timeCount = 0
         while timeCount < times:
             timeCount += 1
@@ -747,7 +781,10 @@ class App:
             if self.endThread:  # 有提示 结束进程
                 self.endThreadIt()
             if self.endCycleThread:  # 无提示 结束进程
-                sys.exit()
+                stopTimeSleep = True
+                break
+
+        return stopTimeSleep
 
     def setStartBtn(self, status=True):
         """
@@ -1152,6 +1189,9 @@ class App:
                 logging.error("[接口][请求失败][Token重新获取失效]" + response.text)
                 self.textLog("请求失败：" + resData["msg"], "error")
                 return False
+        if resData["code"] == 20900021:
+            self.enterDepositPlenty = False
+            return resData
         else:
             logging.error("[接口][请求失败]" + response.text)
             self.textLog(resData["msg"], "error")
@@ -1202,5 +1242,78 @@ class App:
             'syscode': 'DU_USER'
         }
 
+    """
+    # ================================ 测试 ==========================
+    """
+    def test(self, type=""):
+        self.endThread = False
+        if type == "read":
+            print("{读取数据}")
+            self.saleGoodsList = goodsList = self.getSaleGoodsList()
+            if len(goodsList) <= 0:
+                print("{读取数据失败，请检查上架库存文本信息}")
+                return False  # 返回结束进程
+            else:
+                print(goodsList)
+        if type == "down":  # 下架
+            print("{下架}")
+            biddingList = self.getGoodsList(True)
+            for item in biddingList:
+                # TODO 打包时删除
+                print(item['articleNumber'])
+                for items in self.saleGoodsList:
+                    if item['articleNumber'] == items[0]:
+                        self.textLog("下架：" + str(item['articleNumber']))
+                        detailLists = self.getGoodsDetail(item['spuId'])
+                        if self.endThread:
+                            self.endThreadIt()
+                        # 必须全部下架操作
+                        if "detailResponseList" in detailLists:
+                            for detailItem in detailLists["detailResponseList"]:
+                                if "remainQuantity" in detailItem and "price" in detailItem and "biddingNo" in detailItem and "skuId" in detailItem:
+                                    self.deleteGoods(
+                                        detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
+                                        detailItem['skuId'])
+                        else:
+                            self.textLog("下架参数错误，请重新尝试", "error")
+                            self.endThreadIt()
+                time.sleep(1)
+        if type == "up":  # 上架
+            print("{上架}")
+            # 上架商品操作
+            # TODO 上架添加查询是否有上架操作
+            self.textLog("======================================上架操作======================================", "sub")
+            self.textLog("开始上架操作")
+            for item in self.saleGoodsList:
+                if self.endThread:
+                    self.endThreadIt()
+                no = str(item[0])
+                # 搜索货号，判断有无相关商品
+                self.textLog("查询商品：货号：" + no)
+                goods = self.searchGoods(item[0])
+                if len(goods) > 0:
+                    spuId = goods[0]["spuId"]
+                    # 查询商品详情
+                    if not self.enterDepositPlenty: # 保证金不足跳出循环
+                        break
+                    self.upGoods(spuId, item, no)
+                else:
+                    self.textLog("未查询到商品，跳过出价\n", "error")
+                time.sleep(1)
+
+            self.firstPutaway = False
+            self.textLog("======================================上架操作结束======================================", "sub")
+
+        if type == "update":  # 更新
+            print("{更新}")
+            self.startCycleTasks = True  # 标记循环任务开启
+            self.doWileChangePrice()
+            # self.changeGoodsPrice()
+        if type == "order":  # 订单
+            print("{订单}")
+        else:
+            print("测试类型错误", type)
+
+        print("结束操作")
 
 app = App()
