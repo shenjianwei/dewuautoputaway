@@ -16,8 +16,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pynput.mouse import Button, Controller as c1
+
+
 # from pynput.keyboard import Key, Controller as c2
 
+# ----------------------------------------------------
+# | 编译语句 -- --onefile... 用于影藏的调用鼠标键盘工具
+# | pyinstaller auto_putaway.py --onefile --hidden-import=pynput.keyboard._xorg --hidden-import=pynput.mouse._xorg --hidden-import=pynput.keyboard._win32 --hidden-import=pynput.mouse._win32
+# ----------------------------------------------------
 
 class App:
     """
@@ -27,10 +33,10 @@ class App:
     """
     DEBUGER = False
     # 参数
-    appVersions = "得物APP自动化脚本 V0.3.2"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.3.4"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
-    intervalTime = 10  # 执行间隔时间（秒）
+    intervalTime = 300  # 执行间隔时间（秒）
     token = ""  # Token值
     url = 'https://stark.dewu.com'  # 请求域名
     api = url + '/api/v1/h5/biz'  # 请求地址
@@ -113,15 +119,19 @@ class App:
         self.startBtn = tk.Button(frameBtn, text="开始执行", command=lambda: self.thread_it(App.startTask, self))
         self.startBtn.pack(padx=15, pady=10, side="left", fill="both", expand="yes")
         # button1.grid(row=0, column=1)
-        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
+        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10,
+                                                                                                 side="right",
+                                                                                                 fill="both",
+                                                                                                 expand="yes")
 
         if self.DEBUGER:
-            tk.Button(self.root, text="读取文本数据", command=lambda: self.thread_it(App.test, self, "read")).pack(side="left")
+            tk.Button(self.root, text="读取文本数据", command=lambda: self.thread_it(App.test, self, "read")).pack(
+                side="left")
             tk.Button(self.root, text="测试下架", command=lambda: self.thread_it(App.test, self, "down")).pack(side="left")
             tk.Button(self.root, text="测试上架", command=lambda: self.thread_it(App.test, self, "up")).pack(side="left")
-            tk.Button(self.root, text="测试修改价格", command=lambda: self.thread_it(App.test, self, "update")).pack(side="left")
+            tk.Button(self.root, text="测试修改价格", command=lambda: self.thread_it(App.test, self, "update")).pack(
+                side="left")
             tk.Button(self.root, text="测试订单", command=lambda: self.thread_it(App.test, self, "order")).pack(side="left")
-
 
         # 初始化获得Token
         self.thread_it(App.getToken, self)
@@ -161,11 +171,10 @@ class App:
             self.enterDeposit = self.getMerchantInfo()
 
             """下架操作"""
-            self.textLog("======================================全部下架操作======================================","sub")
+            self.textLog("======================================全部下架操作======================================", "sub")
             biddingList = self.getGoodsList(True)
 
             # 循环获取上架商品列表，下架所有商品操作
-            # TODO 打包时打开
             # TODO 打包时打开
             for item in biddingList:
                 # TODO 打包时删除
@@ -200,7 +209,7 @@ class App:
                 if len(goods) > 0:
                     spuId = goods[0]["spuId"]
                     # 查询商品详情
-                    if not self.enterDepositPlenty: # 保证金不足跳出循环
+                    if not self.enterDepositPlenty:  # 保证金不足跳出循环
                         break
                     self.upGoods(spuId, item, no)
                 else:
@@ -380,7 +389,7 @@ class App:
         # 获取cookies中的token
         token = self.getJsonToken(cookies, "mchToken")
         self.openFile(self.dewuTokenFilePath, 'w', token)  # 写入token文件中
-        self.tokenEntry.delete("0","end")
+        self.tokenEntry.delete("0", "end")
         self.tokenEntry.insert("0", token)  # 写入输入框展示
         return token
 
@@ -410,7 +419,8 @@ class App:
         self.topSetIntervalEntry = tk.Entry(top, width=10, justify="center")
         self.topSetIntervalEntry.pack(side="left", expand="yes", fill="both")
         tk.Label(top, text="秒", width=1, justify="left").pack(side="left", expand="yes", fill="both")
-        tk.Button(top, text="确定", command=lambda: self.thread_it(App.setInterval, self)).pack(side="right", expand="yes", fill="both")
+        tk.Button(top, text="确定", command=lambda: self.thread_it(App.setInterval, self)).pack(side="right",
+                                                                                              expand="yes", fill="both")
 
     def setInterval(self):
         """
@@ -473,7 +483,7 @@ class App:
                     # self.textLog("上架商品：货号：" + no)
                     add = self.addGoods(salePrice[1], 1, size, no)
 
-                    if add:
+                    if add == True:
                         self.textLog("上架成功\n", "success")
                         return True
                     else:
@@ -506,7 +516,8 @@ class App:
         self.firstPutaway = False
 
         self.autoNum += 1
-        self.textLog("======================================第 " + str(self.autoNum) + " 次循环======================================", "sub")
+        self.textLog("======================================第 " + str(
+            self.autoNum) + " 次循环======================================", "sub")
         self.textLog("======================================更新价格操作======================================", "sub")
         haveUpdate = False  # 判断是否有更新
         notUpdateCount = 0  # 未更新数量
@@ -529,29 +540,43 @@ class App:
             if binddingGoods:
                 haveUpdate = True
                 # 商品详情
-                goodsDetail = self.getGoodsDetail(binddingGoods["spuId"])
+                spuId = binddingGoods["spuId"]
+                goodsDetail = self.getGoodsDetail(spuId)
 
                 if not ("poundageInfoList" in goodsDetail):
                     self.textLog("查询接口失败：取消商品[" + no + "]价格更新\n", "error")
                 else:
                     self.textLog("开始更新价格：货号：" + no)
                     # 价格计算
-                    updateSalePrice = self.updateSalePrice(item[2], binddingGoods['curMinPrice'], binddingGoods['myMaxPrice'], goodsDetail)
+                    updateSalePrice = self.updateSalePrice(item[2], binddingGoods['curMinPrice'],
+                                                           binddingGoods['myMaxPrice'], goodsDetail)
                     if updateSalePrice[0]:  # 计算价格返回true 或 与当前你最低价不同
                         if int(updateSalePrice[1]) == int(binddingGoods['curMinPrice']):  # 出价 与 当前最低价
                             notUpdateCount += 1
                             self.textLog("价格相同，不作更新\n", "warning")
                         else:
                             # 修改价格
-                            # oldQuantity, price, quantity, skuId
-                            # self.textLog("TODO")
                             # # TODO 打包时打开
-                            update = self.updateGoods(goodsDetail["detailResponseList"][0]["remainQuantity"],
-                                                    updateSalePrice[1],
-                                                    1,
-                                                    goodsDetail["detailResponseList"][0]["skuId"],
-                                                    goodsDetail["detailResponseList"][0]["biddingNo"])
-                            if update['code'] == 200:
+                            # 直接修改价格
+                            # 参数信息 oldQuantity, price, quantity, skuId
+                            # update = self.updateGoods(goodsDetail["detailResponseList"][0]["remainQuantity"],
+                            #                           updateSalePrice[1],
+                            #                           1,
+                            #                           goodsDetail["detailResponseList"][0]["skuId"],
+                            #                           goodsDetail["detailResponseList"][0]["biddingNo"])
+
+                            # 下架再重新上架
+                            # 下架
+                            detailItem = goodsDetail["detailResponseList"][0]
+                            self.deleteGoods(
+                                detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
+                                detailItem['skuId'])
+                            # 查询规格
+                            size = self.sizeGoods(spuId)
+                            # 上架
+                            update = self.addGoods(updateSalePrice[1], 1, size, no)
+
+                            if update == True:
                                 successCount += 1
                                 self.textLog("更新价格成功\n", "success")
                             else:
@@ -634,7 +659,7 @@ class App:
             # 新增订单业务操作
             for orderItem in orderList:
                 if self.endThread:
-                   self.endThreadIt()
+                    self.endThreadIt()
                 if int(orderItem["subOrderNo"]) > int(self.orderSubNum):  # 比对订单号：有订单号大于存储的订单号，说明有新订单
                     for saleItem in self.saleGoodsList:  # 查找匹配的库存商品
                         if saleItem[0] == orderItem['articleNumber']:
@@ -675,8 +700,8 @@ class App:
         :param goodsDetail: 商品详情
         :return: Array 数组返回[计算状态，出价价格，到手价格，错误信息（到手价为0的情况才写入）]
         """
-        price = int(price) # 库存价
-        salePrice = math.ceil(price * 1.2) # 出售价
+        price = int(price)  # 库存价
+        salePrice = math.ceil(price * 1.2)  # 出售价
         finalPrice = int(str(salePrice)[-1])  # 7 + 2 = 9
         # 整理出售价
         addPrice = 0
@@ -819,6 +844,7 @@ class App:
         :return: String - 返回文件读取内容或写入内容
         """
         text = str(content)
+
         def wFile():
             f = open(path, "w", encoding='UTF-8')
             f.write(text)
@@ -1017,7 +1043,7 @@ class App:
         data['sellerBiddingType'] = 0
         data['skuId'] = skuId
         data['type'] = 1
-        delete = self.dewuRequest("POST",'/newBidding/addOrUpdateSingleBidding', data)
+        delete = self.dewuRequest("POST", '/newBidding/addOrUpdateSingleBidding', data)
         if delete['code'] == 200:
             return True
         else:
@@ -1181,7 +1207,8 @@ class App:
         if response.status_code == 401 or resData["code"] == 401:  # 401 重新写获取token 只执行一次的Token获取
             if not self.dewuRequestAgainToken:
                 self.textLog(resData["msg"], "error")
-                self.dewuRequestAgainToken = True
+                # TODO 打开解决死循环获取
+                # self.dewuRequestAgainToken = True
                 self.textLog("Token失效尝试重新获取", "warning")
                 self.token = self.authLogin()
                 return self.dewuRequest(method, url, data, requestCount)
@@ -1245,6 +1272,7 @@ class App:
     """
     # ================================ 测试 ==========================
     """
+
     def test(self, type=""):
         self.endThread = False
         if type == "read":
@@ -1294,7 +1322,7 @@ class App:
                 if len(goods) > 0:
                     spuId = goods[0]["spuId"]
                     # 查询商品详情
-                    if not self.enterDepositPlenty: # 保证金不足跳出循环
+                    if not self.enterDepositPlenty:  # 保证金不足跳出循环
                         break
                     self.upGoods(spuId, item, no)
                 else:
@@ -1315,5 +1343,6 @@ class App:
             print("测试类型错误", type)
 
         print("结束操作")
+
 
 app = App()
