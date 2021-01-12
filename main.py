@@ -9,6 +9,7 @@ import time
 import hashlib
 import tkinter as tk
 from tkinter import Menu, Toplevel, messagebox
+from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 from selenium.webdriver import common
 from selenium.webdriver.common.by import By
@@ -32,14 +33,21 @@ class App:
     url = 'https://stark.dewu.com'  # 请求域名
     api = url + '/api/v1/h5/biz'  # 请求地址
     dewuTokenFilePath = "./dewuToken.txt"
+    # 进程相关参数
+    endThread = False  # 进程管理
     # 请求相关工具参数
     dewuRequestMax = 3  # 请求最大次数
     dewuRequestWaitTime = 5  # 请求等待间隔时间
     dewuRequestAgainToken = False  # 重新获取token机会
+    # 库存相关参数
+    saleGoodsList = []  # 库存商品列表
+    txtParamNum = 3  # 库存规格字段数
 
     # 元素
     tokenEntry = ""  # 文本输入框 Token 值
-    logTextDom = ""  # 日志 text 框
+    logTextDom = ""  # 日志 Text 框
+    startBtn = ""  # 开始 Button 按钮
+    saleGoodsListText = ""  # 库存 Text 框
 
     def __init__(self):
         self.initLogging()  # 初始化日志
@@ -88,16 +96,56 @@ class App:
         # 设置填充和布局
         frameBtn.pack(fill="x", ipady=10)
 
-        self.startBtn = tk.Button(frameBtn, text="开始执行")
+        self.startBtn = tk.Button(frameBtn, text="开始执行", command=lambda: self.thread_it(App.startTask, self))
         self.startBtn.pack(padx=15, pady=10, side="left", fill="both", expand="yes")
         # button1.grid(row=0, column=1)
-        tk.Button(frameBtn, text="结束执行", ).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
+        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
 
         # 初始化获得Token
         self.thread_it(App.getToken, self)
         self.root.mainloop()
 
-    # self.getToken()
+    def endTask(self):
+        """
+        结束任务
+        :return:
+        """
+        end = messagebox.askokcancel('提示', '要执行此操作吗')
+        if end:
+            self.endThread = True
+
+    def startTask(self):
+        """
+        开始任务
+        :return:
+        """
+        """初始化任务"""
+        self.logTextDom.delete('1.0', 'end')  # 清空文本日志
+        self.endThread = False
+        logging.info("[脚本开始]")
+
+        cookies = self.getToken()
+        if cookies:
+            self.textLog("脚本开始", "info")
+            """文本数据读取"""
+            self.textLog("读取数据")
+            self.saleGoodsList = goodsList = self.getSaleGoodsList()
+            if len(goodsList) <= 0:
+                self.textLog("读取数据失败，请检查上架库存文本信息", "error")
+                self.setStartBtn()
+                return False  # 返回结束进程
+
+
+
+        else:
+            # 未获取到Token 取消按钮禁用
+            self.setStartBtn()
+
+
+    def endThreadIt(self):
+        self.textLog("进程结束", "info")
+        sys.exit()
+
     def thread_it(self, func, *args):
         """
         将函数打包进线程
@@ -160,6 +208,29 @@ class App:
 
         return False
 
+    def getSaleGoodsList(self):
+        """
+        文本内容读取
+        :return: Array
+        """
+        f = self.saleGoodsListText.get("1.0", "end")
+        f = f.split("\n")
+        lists = []
+        for item in f:
+            if self.endThread:
+                self.endThreadIt()
+            items = item.split("\t")
+            if len(items) == self.txtParamNum:
+                haveGoods = False
+                for listsItem in lists:
+                    if listsItem[0] == items[0]:
+                        haveGoods = True
+                        self.textLog("存在相同型号商品：" + listsItem[0], "warning")
+                if haveGoods == False:
+                    self.textLog(str(items))
+                    lists.append(items)
+        return lists
+
     def authLogin(self):
         """
         打开浏览器登录获取token
@@ -167,7 +238,10 @@ class App:
         """
         mouse = c1()
         url = self.url + '/business/login.html'
-        options = webdriver.ChromeOptions()
+        options = Options()
+        options.binary_location = "./lib/brower/chrome.exe"  # 指定浏览器位置
+        if not os.path.isfile(options.binary_location):
+            messagebox.showerror("警告", "浏览器获取失败，请将浏览器放入当前目录 lib/brower 目录中")
         # 设置浏览器初始 位置x,y & 宽高x,y
         # 不加载图片,加快访问速度
         options.add_experimental_option(
@@ -185,9 +259,11 @@ class App:
         # 添加UA
         ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36'
         options.add_argument('user-agent=' + ua)
+        chromedriver = "./lib/chromedriver.exe"
+        if not os.path.isfile(chromedriver):
+            messagebox.showerror("警告", "缺少浏览器 chromedriver.exe 驱动，请将驱动放置在 lib 目录中")
 
-        driver = webdriver.Chrome(
-            executable_path="./lib/chromedriver.exe", options=options)
+        driver = webdriver.Chrome(executable_path=chromedriver, options=options)
         # 通过浏览器的dev_tool在get页面钱将.webdriver属性改为"undefined"
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """Object.defineProperty(navigator, 'webdriver', {get: () => undefined})""",
@@ -211,9 +287,9 @@ class App:
 
         time.sleep(1)
         driver.find_element_by_xpath(
-            '//*[@placeholder="请输入手机号码"]').send_keys(15757395822)  # 15355979998
+            '//*[@placeholder="请输入手机号码"]').send_keys(15355979998)
         driver.find_element_by_xpath(
-            '//*[@placeholder="请输入密码"]').send_keys('Dyf131452')  # jeefNO1
+            '//*[@placeholder="请输入密码"]').send_keys('jeefNO1')
         driver.find_element_by_class_name('el-button').click()
         time.sleep(3)
         cookies = driver.get_cookies()  # Selenium为我们提供了get_cookies来获取登录cookies
@@ -221,6 +297,8 @@ class App:
         # 获取cookies中的token
         token = self.getJsonToken(cookies, "mchToken")
         self.openFile(self.dewuTokenFilePath, 'w', token)  # 写入token文件中
+        self.tokenEntry.delete("0","end")
+        self.tokenEntry.insert("0", token)  # 写入输入框展示
         return token
 
     def getJsonToken(self, tokenJson, tokenKey):
@@ -240,6 +318,12 @@ class App:
     """
     # ============================ Helprs 帮助函数 ============================
     """
+
+    def setStartBtn(self, status=True):
+        if status:
+            self.startBtn.configure(state='normal', text="开始执行")
+        else:
+            self.startBtn.configure(state='disable', text="正在执行中")
 
     def initLogging(self):
         """
@@ -263,26 +347,21 @@ class App:
         :return: String - 返回文件读取内容或写入内容
         """
         text = str(content)
-        global f
-        try:
-            def wFile():
-                f = open(path, "w", encoding='UTF-8')
-                f.write(text)
+        def wFile():
+            f = open(path, "w", encoding='UTF-8')
+            f.write(text)
 
-            if action == "w":
+        if action == "w":
+            wFile()
+        # if action == "r":
+        else:
+            # 没有文件，则新建空白文件
+            if not os.path.isfile(path):
                 wFile()
-            # if action == "r":
-            else:
-                # 没有文件，则新建空白文件
-                if not os.path.isfile(path):
-                    wFile()
 
-                f = open(path, "r", encoding='UTF-8')
-                text = f.read()
+            f = open(path, "r", encoding='UTF-8')
+            text = f.read()
 
-        finally:
-            if f:
-                f.close()
         return text
 
     def openPath(self, path):
@@ -411,6 +490,7 @@ class App:
             return resData
         if response.status_code == 401 or resData["code"] == 401:  # 401 重新写获取token 只执行一次的Token获取
             if not self.dewuRequestAgainToken:
+                self.textLog(resData["msg"], "error")
                 self.dewuRequestAgainToken = True
                 self.textLog("Token失效尝试重新获取", "warning")
                 self.token = self.authLogin()
@@ -421,6 +501,7 @@ class App:
                 return False
         else:
             logging.error("[接口][请求失败]" + response.text)
+            self.textLog(resData["msg"], "error")
             # 文本提示写入，重新请求获取
             if requestCount < self.dewuRequestMax:
                 self.textLog("查询接口错误，尝试3次重新请求，第 " + str(requestCount + 1) + " 次", "warning")
