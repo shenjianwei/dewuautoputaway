@@ -37,6 +37,10 @@ class App:
     endThread = False  # 进程管理
     endCycleThread = False  # 循环进程管理
     startCycleTasks = False  # 是否开始循环任务
+    autoNum = 0  # 自动循环次数
+    firstPutaway = False  # 是否第一次执行 用于修改价格过低的输入框清除重置操作
+    firstGetSubNum = False  # 是否第一次进订单 第一次，则默认使用最大订单号，作为之后的比较用
+    orderSubNum = ""  # 比对订单号
     # 请求相关工具参数
     dewuRequestMax = 3  # 请求最大次数
     dewuRequestWaitTime = 5  # 请求等待间隔时间
@@ -132,65 +136,65 @@ class App:
 
         cookies = self.getToken()
         if cookies:
-            # self.textLog("脚本开始", "info")
-            # """文本数据读取"""
-            # self.textLog("读取数据")
-            # self.saleGoodsList = goodsList = self.getSaleGoodsList()
-            # if len(goodsList) <= 0:
-            #     self.textLog("读取数据失败，请检查上架库存文本信息", "error")
-            #     self.setStartBtn()
-            #     return False  # 返回结束进程
-            #
-            # """获取保证金"""
-            # self.enterDeposit = self.getMerchantInfo()
-            #
-            # """下架操作"""
-            # self.textLog("======================================全部下架操作======================================","sub")
-            # biddingList = self.getGoodsList(True)
-            #
-            # # 循环获取上架商品列表，下架所有商品操作
-            # # TODO 打包时打开
-            # for item in biddingList:
-            #     # TODO 打包时删除
-            #     # if item['articleNumber'] == "L1.611.4.75.2":
-            #     self.textLog("下架：" + str(item['articleNumber']))
-            #     detailLists = self.getGoodsDetail(item['spuId'])
-            #     if self.endThread:
-            #         self.endThreadIt()
-            #     # 必须全部下架操作
-            #     if "detailResponseList" in detailLists:
-            #         for detailItem in detailLists["detailResponseList"]:
-            #             if "remainQuantity" in detailItem and "price" in detailItem and "biddingNo" in detailItem and "skuId" in detailItem:
-            #                 self.deleteGoods(
-            #                     detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
-            #                     detailItem['skuId'])
-            #     else:
-            #         self.textLog("下架参数错误，请重新尝试", "error")
-            #         self.endThreadIt()
-            #     time.sleep(1)
-            #
-            #     # 上架商品操作
-            #     # TODO 上架添加查询是否有上架操作
-            #     self.textLog("======================================上架操作======================================", "sub")
-            #     self.textLog("开始上架操作")
-            #     for item in self.saleGoodsList:
-            #         if self.endThread:
-            #             self.endThreadIt()
-            #         no = str(item[0])
-            #         # 搜索货号，判断有无相关商品
-            #         self.textLog("查询商品：货号：" + no)
-            #         goods = self.searchGoods(item[0])
-            #         if len(goods) > 0:
-            #             spuId = goods[0]["spuId"]
-            #             # 查询商品详情
-            #             self.upGoods(spuId, item, no)
-            #         else:
-            #             self.textLog("未查询到商品，跳过出价\n", "error")
-            #         time.sleep(1)
-            #
-            #     self.firstPutaway = False
-            #     self.endUpGoods = True
-            #     self.textLog("======================================上架操作结束======================================", "sub")
+            self.textLog("脚本开始", "info")
+            """文本数据读取"""
+            self.textLog("读取数据")
+            self.saleGoodsList = goodsList = self.getSaleGoodsList()
+            if len(goodsList) <= 0:
+                self.textLog("读取数据失败，请检查上架库存文本信息", "error")
+                self.setStartBtn()
+                return False  # 返回结束进程
+
+            """获取保证金"""
+            self.enterDeposit = self.getMerchantInfo()
+
+            """下架操作"""
+            self.textLog("======================================全部下架操作======================================","sub")
+            biddingList = self.getGoodsList(True)
+
+            # 循环获取上架商品列表，下架所有商品操作
+            # TODO 打包时打开
+            # TODO 打包时打开
+            for item in biddingList:
+                # TODO 打包时删除
+                # if item['articleNumber'] == "L1.611.4.75.2":
+                self.textLog("下架：" + str(item['articleNumber']))
+                detailLists = self.getGoodsDetail(item['spuId'])
+                if self.endThread:
+                    self.endThreadIt()
+                # 必须全部下架操作
+                if "detailResponseList" in detailLists:
+                    for detailItem in detailLists["detailResponseList"]:
+                        if "remainQuantity" in detailItem and "price" in detailItem and "biddingNo" in detailItem and "skuId" in detailItem:
+                            self.deleteGoods(
+                                detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
+                                detailItem['skuId'])
+                else:
+                    self.textLog("下架参数错误，请重新尝试", "error")
+                    self.endThreadIt()
+                time.sleep(1)
+
+                # 上架商品操作
+                # TODO 上架添加查询是否有上架操作
+                self.textLog("======================================上架操作======================================", "sub")
+                self.textLog("开始上架操作")
+                for item in self.saleGoodsList:
+                    if self.endThread:
+                        self.endThreadIt()
+                    no = str(item[0])
+                    # 搜索货号，判断有无相关商品
+                    self.textLog("查询商品：货号：" + no)
+                    goods = self.searchGoods(item[0])
+                    if len(goods) > 0:
+                        spuId = goods[0]["spuId"]
+                        # 查询商品详情
+                        self.upGoods(spuId, item, no)
+                    else:
+                        self.textLog("未查询到商品，跳过出价\n", "error")
+                    time.sleep(1)
+
+                self.firstPutaway = False
+                self.textLog("======================================上架操作结束======================================", "sub")
 
             self.startCycleTasks = True  # 标记循环任务开启
             self.doWileChangePrice()
@@ -202,7 +206,7 @@ class App:
     def doWileChangePrice(self):
         while True:
             self.timeSleep(self.intervalTime)
-            # self.changeGoodsPrice()
+            self.changeGoodsPrice()
 
     def endThreadIt(self):
         self.textLog("进程结束", "info")
@@ -407,7 +411,6 @@ class App:
             self.endCycleThread = False
             self.doWileChangePrice()
 
-
     def upGoods(self, spuId, item, no):
         """
         上架操作
@@ -459,7 +462,7 @@ class App:
                     else:
                         self.textLog("取消上架：价格过低" + "\n", "error")
                         text = ""
-                        if self.firstPutaway == False:
+                        if not self.firstPutaway:
                             self.saleLowGoodsListText.delete('1.0', "end")
                             self.firstPutaway = True
                             text += "型号\t数量\t库存价格\t渠道最低价\t实际到手价\t上架时间\n"
@@ -468,6 +471,164 @@ class App:
                             salePrice[2]) + "\t[" + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
                         self.saleLowGoodsListText.insert("end", text)
                         return False
+
+    def changeGoodsPrice(self):
+        """
+        修改价格
+        :return:
+        """
+        self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
+        self.firstPutaway = False
+
+        self.autoNum += 1
+        self.textLog("======================================第 " + str(self.autoNum) + " 次循环======================================", "sub")
+        self.textLog("======================================更新价格操作======================================", "sub")
+        haveUpdate = False  # 判断是否有更新
+        notUpdateCount = 0  # 未更新数量
+        updateCount = 0  # 更新数量
+        successCount = 0  # 更新成功数量
+        errorCount = 0  # 更新失败数量
+        for item in self.saleGoodsList:  # 循环库存
+            if self.endThread:
+                self.endThreadIt()
+            no = str(item[0])
+            binddingGoods = []
+
+            biddingList = self.getGoodsList()  # 查询上架商品
+
+            for listItem in biddingList:  # 循环筛选出已上架商品
+                if listItem['articleNumber'] == no:
+                    binddingGoods = listItem
+
+            if binddingGoods:
+                haveUpdate = True
+                # 商品详情
+                goodsDetail = self.getGoodsDetail(binddingGoods["spuId"])
+
+                if not ("poundageInfoList" in goodsDetail):
+                    self.textLog("查询接口失败：取消商品[" + no + "]价格更新\n", "error")
+                else:
+                    self.textLog("开始更新价格：货号：" + no)
+                    # 价格计算
+                    updateSalePrice = self.updateSalePrice(item[2], binddingGoods['curMinPrice'], binddingGoods['myMaxPrice'], goodsDetail)
+                    if updateSalePrice[0]:  # 计算价格返回true 或 与当前你最低价不同
+                        if int(updateSalePrice[1]) == int(binddingGoods['curMinPrice']):  # 出价 与 当前最低价
+                            notUpdateCount += 1
+                            self.textLog("价格相同，不作更新\n", "warning")
+                        else:
+                            # 修改价格
+                            # oldQuantity, price, quantity, skuId
+                            # self.textLog("TODO")
+                            # # TODO 打包时打开
+                            update = self.updateGoods(goodsDetail["detailResponseList"][0]["remainQuantity"],
+                                                    updateSalePrice[1],
+                                                    1,
+                                                    goodsDetail["detailResponseList"][0]["skuId"],
+                                                    goodsDetail["detailResponseList"][0]["biddingNo"])
+                            if update['code'] == 200:
+                                successCount += 1
+                                self.textLog("更新价格成功\n", "success")
+                            else:
+                                errorCount += 1
+                                self.textLog("更新价格失败：" + str(update["msg"]) + "\n", "error")
+                    else:
+                        notUpdateCount += 1
+                        if updateSalePrice[2] == 0:
+                            self.textLog("不作更新\n", "warning")
+                        else:
+                            self.textLog("取消更新：价格过低" + "\n", "error")
+                            text = ""
+                            if self.firstPutaway == False:
+                                self.saleLowGoodsListText.delete('1.0', "end")
+                                self.firstPutaway = True
+                                text += "型号\t数量\t库存价格\t渠道最低价\t实际到手价\t上架时间\n"
+                                # text += "上架时间：" + time.strftime("%Y-%m-%d %H:%M:%S %p", time.localtime()) + "\n"
+                            text += no + "\t1\t" + str(item[2]) + "\t" + str(
+                                int(int(binddingGoods["curMinPrice"]) / 100)) + "\t" + str(
+                                updateSalePrice[2]) + "\t[" + str(
+                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
+                            self.saleLowGoodsListText.insert("end", text)
+                    updateCount += 1
+            else:
+                """与仓库商品未查询到，操作上架"""
+                # 搜索货号，判断有无相关商品
+                self.textLog("查询商品：货号：" + no)
+                goods = self.searchGoods(item[0])
+                if len(goods) > 0:
+                    spuId = goods[0]["spuId"]
+                    # 查询商品详情
+                    self.upGoods(spuId, item, no)
+                else:
+                    self.textLog("未查询到商品，跳过出价\n", "error")
+
+            time.sleep(1)
+        self.firstPutaway = False  # 回复状态，用于下次循环清空数据
+        self.textLog("[修改操作统计：总数：" + str(updateCount) + "；未做修改：" + str(notUpdateCount) + "；修改成功：" + str(
+            successCount) + "；修改失败：" + str(errorCount) + "；]\n")
+
+        if not haveUpdate:  # 未做更新
+            self.textLog("无商品可以进行更新价格\n")
+
+        # # TODO 打包时打开
+        self.updateOrder()
+
+        # 每1分钟执行一次
+        self.textLog("======================================第 " +
+                     str(self.autoNum) + " 次循环结束======================================\n", "sub")
+
+    def updateOrder(self):
+        """
+        订单操作
+        他能买，有订单，说明某件商品他上架过
+        仓库商品是否有库存
+        从最新的一笔订单，开始等待下一笔订单
+        :return:
+        """
+        self.textLog("======================================订单操作======================================", "sub")
+        orderList = self.getOrders()  # 获取订单列表，倒序排列
+        haveUpdate = False
+        if len(orderList) > 0:  # 有订单
+            order = orderList[0]
+            if not self.firstGetSubNum:  # 第一次，不操作订单的减库操作
+                self.orderSubNum = order["subOrderNo"]  # 获取订单号，存储用于下次比较
+
+            # 新增订单数量 统计
+            newOrderCount = 0
+            for orderItem in orderList:
+                if int(orderItem["subOrderNo"]) > int(self.orderSubNum):
+                    newOrderCount += 1
+            self.textLog("新增订单：" + str(newOrderCount) + " 单")
+            self.textLog("")
+
+            # 新增订单业务操作
+            for orderItem in orderList:
+                if int(orderItem["subOrderNo"]) > int(self.orderSubNum):  # 比对订单号：有订单号大于存储的订单号，说明有新订单
+                    for saleItem in self.saleGoodsList:  # 查找匹配的库存商品
+                        if saleItem[0] == orderItem['articleNumber']:
+                            count = int(saleItem[1])
+                            if count > 0:  # 有库存
+                                count -= 1
+                                self.textLog(
+                                    "新上架：[货号：" + saleItem[0] + "；库存(余)：" + str(count) + " (" + saleItem[
+                                        1] + "-1)]\n")
+                                saleItem[1] = str(count)
+
+                                # 卖出一个再重新上架一个
+                                upGoods = self.upGoods(orderItem['spuId'], saleItem, saleItem[0])
+
+                                if upGoods:
+                                    txt = ""
+                                    # 重新拼接文本
+                                    for txtItem in self.saleGoodsList:
+                                        txt += txtItem[0] + "\t" + txtItem[1] + "\t" + txtItem[2] + "\n"
+
+                                    self.saleGoodsListText.delete('1.0', 'end')
+                                    self.saleGoodsListText.insert('end', txt)  # 文本写入
+
+                                haveUpdate = True
+
+        if not haveUpdate:
+            self.textLog("无新增库存相关商品订单")
 
     """
     # ============================ 价格计算 ============================
