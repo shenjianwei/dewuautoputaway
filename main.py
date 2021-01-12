@@ -135,6 +135,11 @@ class App:
                 self.setStartBtn()
                 return False  # 返回结束进程
 
+            """获取保证金"""
+            self.enterDeposit = self.getMerchantInfo()
+
+            """下架操作"""
+
 
 
         else:
@@ -406,6 +411,195 @@ class App:
                                tag)
         self.logTextDom.see('end')
         self.root.update()
+
+    def array_get(self, array, key="", defVal=None):
+        """
+        获取数组的值
+        :param array: 数组
+        :param key: 键
+        :param defVal: 默认值
+        :return: Value(String|int|float...)|""
+        """
+        if key == "":
+            return ""
+        else:
+            if key in array:
+                return array[key]
+            else:
+                if defVal is None:
+                    return ""
+                else:
+                    return defVal
+
+    """
+    # ============================ api ============================
+    """
+
+    def getMerchantInfo(self):
+        """
+        获取保证金
+        :return:
+        """
+        logging.info("[获取保证金]")
+        minfo = self.dewuRequest("GET", '/home/merchantInfo?sign=fe26befc49444d362c8f17463630bdba', '')
+        enterDeposit = self.array_get(minfo['data'], "enterDeposit", 0)
+        self.enterDeposit = str(int(int(enterDeposit) / 100))
+        self.textLog("获取保证金：" + self.enterDeposit)
+        self.userInfo.configure(text=self.setInfo())
+        return minfo['data']['enterDeposit']
+
+    # # 获取订单
+    # def getOrders(self):
+    #     logging.info("获取订单列表")
+    #     data = dict()
+    #     data['becomingDeliverTimeOut'] = "false"
+    #     data['bizType'] = "0"
+    #     data['endTime'] = time.strftime(
+    #         "%Y-%m-%d", time.localtime()) + " 23:59:59"
+    #     data['pageNo'] = 1
+    #     data['pageSize'] = 20
+    #     data['startTime'] = "2020-11-30 00:00:00"
+    #     data['status'] = 1
+    #     data['subTypeListString'] = "0,13"
+    #     orderList = self.post('/orders/list', data)
+    #     total = orderList['data']['total']
+    #     list = orderList['data']['list']
+    #     # self.textLog("订单数量" + str(total) + "\n")
+    #     # for item in list:
+    #     #     self.textLog("[订单号：" + item['orderNo'] + "货号：" + item['articleNumber'] + "名称：" + item["spuTitle"] + "订单状态：" + item["statusDesc"] + "订单类型：" + item["orderTypeDesc"] + "]\n")
+    #     return list
+    #
+    # # 获取出价列表
+    # def getGoodsList(self, shelf=False):
+    #     logging.info("获取出价列表")
+    #     data = dict()
+    #     data['pageNo'] = 1
+    #     data['pageSize'] = 20
+    #     data['biddingType'] = '0'
+    #     data['biddingModel'] = 1
+    #     minfo = self.post('/bidding/biddingList', data)
+    #     # pageSize = minfo['data']['pageSize']
+    #     total = minfo['data']['total']
+    #     list = minfo['data']['list']
+    #
+    #     totalPages = minfo['data']['page']
+    #     page = 2
+    #     while page <= totalPages:
+    #         time.sleep(1)
+    #         data = dict()
+    #         data['pageNo'] = page
+    #         data['pageSize'] = 20
+    #         data['biddingType'] = '0'
+    #         data['biddingModel'] = 1
+    #         minfo = self.post('/bidding/biddingList', data)
+    #         list = list + minfo['data']['list']
+    #         page += 1
+    #
+    #     # self.textLog("已上架商品数量：" + str(total))
+    #     # for item in list:
+    #     #     self.textLog(item['title'])
+    #     if shelf == True:
+    #         self.textLog("下架数量：" + str(len(list)))
+    #         if total != len(list):
+    #             self.textLog("下架数量错误，请重新尝试")
+    #             self.stopTime = True
+    #
+    #     return list
+    #
+    # # 获取商品详情
+    # def getGoodsDetail(self, spuId):
+    #     logging.info("获取出价商品详情")
+    #     param = dict()
+    #     param['spuId'] = spuId
+    #     param['biddingType'] = 0
+    #     detail = self.get('/bidding/detail', param)
+    #     if not ("poundageInfoList" in detail["data"]):
+    #         tryCount = 0
+    #         while tryCount < 3:  # 尝试3次请求
+    #             self.textLog("查询接口错误，尝试3次重新请求，第 " + str(tryCount + 1) + " 次", "warning")
+    #             tryCount += 1
+    #             if "poundageInfoList" in detail["data"]:
+    #                 # 请求成功跳出循环操作
+    #                 break
+    #             else:
+    #                 param = dict()
+    #                 param['spuId'] = spuId
+    #                 param['biddingType'] = 0
+    #                 detail = self.get('/bidding/detail', param)
+    #             if tryCount < 3:
+    #                 time.sleep(5)  # 等待5秒
+    #
+    #     return detail['data']
+    #
+    # # 下架商品
+    # def deleteGoods(self, oldQuantity, price, sellerBiddingNo, skuId):
+    #     logging.info("下架商品")
+    #     data = dict()
+    #     data['oldQuantity'] = oldQuantity
+    #     data['price'] = price
+    #     data['quantity'] = 0
+    #     data['sellerBiddingNo'] = sellerBiddingNo
+    #     data['sellerBiddingType'] = 0
+    #     data['skuId'] = skuId
+    #     data['type'] = 1
+    #     delete = self.post('/newBidding/addOrUpdateSingleBidding', data)
+    #     if delete['code'] == 200:
+    #         return True
+    #     else:
+    #         return False
+    #
+    # # 查询商品
+    # def searchGoods(self, articleNumberStr):
+    #     logging.info("查询商品")
+    #     data = dict()
+    #     data['articleNumberStr'] = articleNumberStr  # 型号搜索内容
+    #     data['biddingType'] = "0"
+    #     data['page'] = 1
+    #     data['pageSize'] = 20
+    #     search = self.post('/search/newProductSearch', data)
+    #     return search['data']['contents']
+    #
+    # # 出价规格查询
+    # # return int skuid
+    # def sizeGoods(self, spuId):
+    #     logging.info("查询商品")
+    #     param = dict()
+    #     param['spuId'] = spuId
+    #     search = self.get('/newBidding/queryPropsBySpuId', param)
+    #     return search['data'][0]['skuId']
+    #
+    # # 上架商品
+    #
+    # def addGoods(self, price, quantity, skuId, no):
+    #     logging.info("上架商品" + no)
+    #     data = dict()
+    #     data['price'] = price  # 价格
+    #     data['quantity'] = quantity  # 数量（库存）
+    #     data['sellerBiddingType'] = 0
+    #     data['skuId'] = skuId
+    #     data['type'] = 1
+    #     add = self.post('/newBidding/addOrUpdateSingleBidding', data)
+    #     if add['code'] == 200:
+    #         logging.info("上架成功", "success")
+    #         return True
+    #     else:
+    #         logging.warning("上架失败", "error")
+    #         return add
+    #
+    # # 修改上架商品价格
+    # def updateGoods(self, oldQuantity, price, quantity, skuId, biddingNo):
+    #     logging.info("修改商品")
+    #
+    #     data = dict()
+    #     data['oldQuantity'] = oldQuantity  # 旧库存
+    #     data['price'] = price  # 价格
+    #     data['quantity'] = quantity  # 数量（库存）
+    #     data['sellerBiddingNo'] = biddingNo
+    #     data['sellerBiddingType'] = 0
+    #     data['skuId'] = skuId
+    #     data['type'] = 1
+    #     update = self.post('/newBidding/addOrUpdateSingleBidding', data)
+    #     return update
 
     """
     # ============================ sign 签名 ============================
