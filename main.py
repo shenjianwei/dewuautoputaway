@@ -11,14 +11,10 @@ import tkinter as tk
 from tkinter import Menu, Toplevel, messagebox
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
-from selenium.webdriver import common
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pynput.mouse import Button, Controller as c1
-
-
-# from pynput.keyboard import Key, Controller as c2
 
 # ----------------------------------------------------
 # | 编译语句 -- --onefile... 用于影藏的调用鼠标键盘工具
@@ -31,7 +27,7 @@ class App:
 
     默认的初始化配置参数
     """
-    DEBUGER = False
+    DEBUGER = True
     # 参数
     appVersions = "得物APP自动化脚本 V0.3.4"  # 项目信息
     enterDeposit = 0  # 保证金
@@ -451,35 +447,6 @@ class App:
         self.cycleTimes = int(self.cycleTimesEntry.get())
         messagebox.showinfo("消息", "设置成功")
 
-    # def upTask(self):
-    #     """
-    #     上架任务
-    #     :return:
-    #     """
-    #     # 上架商品操作
-    #     # TODO 上架添加查询是否有上架操作
-    #     self.textLog("======================================上架操作======================================", "sub")
-    #     self.textLog("开始上架操作\n")
-    #     for item in self.saleGoodsList:
-    #         if self.endThread:
-    #             self.endThreadIt()
-    #         no = str(item[0])
-    #         # 搜索货号，判断有无相关商品
-    #         self.textLog("查询商品：货号：" + no)
-    #         goods = self.searchGoods(item[0])
-    #         if len(goods) > 0:
-    #             spuId = goods[0]["spuId"]
-    #             # 查询商品详情
-    #             if not self.enterDepositPlenty:  # 保证金不足跳出循环
-    #                 break
-    #             self.upGoods(spuId, item, no)
-    #         else:
-    #             self.textLog("未查询到商品，跳过出价\n", "error")
-    #         time.sleep(1)
-    #
-    #     self.firstPutaway = False
-    #     self.textLog("======================================上架操作结束======================================", "sub")
-
     def upAndChangeTask(self):
         """
         上架&更新任务
@@ -741,132 +708,6 @@ class App:
                             salePrice[2]) + "\t[" + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
                         self.saleLowGoodsListText.insert("end", text)
                         return False
-
-    # def changeGoodsPrice(self):
-    #     """
-    #     修改价格
-    #     :return:
-    #     """
-    #     self.startCycle = True
-    #     self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
-    #     self.firstPutaway = False
-    #
-    #     self.autoNum += 1
-    #     self.textLog("======================================第 " + str(
-    #         self.autoNum) + " 次循环======================================", "sub")
-    #     self.textLog("======================================更新价格操作======================================", "sub")
-    #     haveUpdate = False  # 判断是否有更新
-    #     notUpdateCount = 0  # 未更新数量
-    #     updateCount = 0  # 更新数量
-    #     successCount = 0  # 更新成功数量
-    #     errorCount = 0  # 更新失败数量
-    #     upCount = 0  # 更新失败数量
-    #     for item in self.saleGoodsList:  # 循环库存
-    #         if self.endThread:
-    #             self.endThreadIt()
-    #         no = str(item[0])
-    #         binddingGoods = []
-    #
-    #         biddingList = self.getGoodsList()  # 查询上架商品
-    #
-    #         for listItem in biddingList:  # 循环筛选出已上架商品
-    #             if listItem['articleNumber'] == no:
-    #                 binddingGoods = listItem
-    #
-    #         if binddingGoods:
-    #             haveUpdate = True
-    #             # 商品详情
-    #             spuId = binddingGoods["spuId"]
-    #             goodsDetail = self.getGoodsDetail(spuId)
-    #
-    #             if not ("poundageInfoList" in goodsDetail):
-    #                 self.textLog("查询接口失败：取消商品[" + no + "]价格更新\n", "error")
-    #             else:
-    #                 self.textLog("开始更新价格：货号：" + no)
-    #                 # 价格计算
-    #                 updateSalePrice = self.updateSalePrice(item[2], binddingGoods['curMinPrice'],
-    #                                                        binddingGoods['myMaxPrice'], goodsDetail)
-    #                 if updateSalePrice[0]:  # 计算价格返回true 或 与当前你最低价不同
-    #                     if int(updateSalePrice[1]) == int(binddingGoods['curMinPrice']):  # 出价 与 当前最低价
-    #                         notUpdateCount += 1
-    #                         self.textLog("价格相同，不作更新\n", "warning")
-    #                     else:
-    #                         # 修改价格
-    #                         # # TODO 打包时打开
-    #                         # 直接修改价格
-    #                         # 参数信息 oldQuantity, price, quantity, skuId
-    #                         # update = self.updateGoods(goodsDetail["detailResponseList"][0]["remainQuantity"],
-    #                         #                           updateSalePrice[1],
-    #                         #                           1,
-    #                         #                           goodsDetail["detailResponseList"][0]["skuId"],
-    #                         #                           goodsDetail["detailResponseList"][0]["biddingNo"])
-    #
-    #                         # 下架再重新上架
-    #                         # 下架
-    #                         detailItem = goodsDetail["detailResponseList"][0]
-    #                         self.deleteGoods(
-    #                             detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
-    #                             detailItem['skuId'])
-    #                         # 查询规格
-    #                         size = self.sizeGoods(spuId)
-    #                         # 上架
-    #                         update = self.addGoods(updateSalePrice[1], 1, size, no)
-    #
-    #                         if update == True:
-    #                             successCount += 1
-    #                             self.textLog("更新价格成功\n", "success")
-    #                         else:
-    #                             errorCount += 1
-    #                             self.textLog("更新价格失败：" + str(update["msg"]) + "\n", "error")
-    #                 else:
-    #                     notUpdateCount += 1
-    #                     if updateSalePrice[2] == 0:
-    #                         self.textLog("不作更新\n", "warning")
-    #                     else:
-    #                         self.textLog("取消更新：价格过低" + "\n", "error")
-    #                         text = ""
-    #                         if self.firstPutaway == False:
-    #                             self.saleLowGoodsListText.delete('1.0', "end")
-    #                             self.firstPutaway = True
-    #                             text += "型号\t数量\t库存价格\t渠道最低价\t实际到手价\t上架时间\n"
-    #                             # text += "上架时间：" + time.strftime("%Y-%m-%d %H:%M:%S %p", time.localtime()) + "\n"
-    #                         text += no + "\t1\t" + str(item[2]) + "\t" + str(
-    #                             int(int(binddingGoods["curMinPrice"]) / 100)) + "\t" + str(
-    #                             updateSalePrice[2]) + "\t[" + str(
-    #                             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
-    #                         self.saleLowGoodsListText.insert("end", text)
-    #                 updateCount += 1
-    #         else:
-    #             """与仓库商品未查询到，操作上架"""
-    #             # 搜索货号，判断有无相关商品
-    #             if self.enterDepositPlenty:  # 保证金不足跳出循环
-    #                 self.textLog("查询商品：货号：" + no)
-    #                 goods = self.searchGoods(item[0])
-    #                 if len(goods) > 0:
-    #                     spuId = goods[0]["spuId"]
-    #                     # 查询商品详情
-    #                     upGoods = self.upGoods(spuId, item, no)
-    #                     if upGoods:
-    #                         upCount += 1
-    #                 else:
-    #                     self.textLog("未查询到商品，跳过出价\n", "error")
-    #
-    #         time.sleep(1)
-    #     self.firstPutaway = False  # 回复状态，用于下次循环清空数据
-    #     self.textLog("[修改操作统计：总数：" + str(updateCount) + "；未做修改：" + str(notUpdateCount) + "；修改成功：" + str(
-    #         successCount) + "；修改失败：" + str(errorCount) + "；新上架：" + str(upCount) + "]\n")
-    #
-    #     if not haveUpdate:  # 未做更新
-    #         self.textLog("无商品可以进行更新价格\n")
-    #
-    #     # # TODO 打包时打开
-    #     if not self.DEBUGER:
-    #         self.updateOrder()
-    #
-    #     # 每1分钟执行一次
-    #     self.textLog("======================================第 " +
-    #                  str(self.autoNum) + " 次循环结束======================================\n", "sub")
-    #     self.startCycle = False
 
     def updateOrder(self):
         """
