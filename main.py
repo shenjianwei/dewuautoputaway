@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 import threading
 import requests
@@ -463,24 +464,36 @@ class App:
                 time.sleep(1)
                 item = item.split("\t")
                 itemModel = item[0]
-                if "型号" in itemModel:
+                if "型号" in itemModel or "获取完成。" in itemModel:
                     continue
                 if len(item[0]) > 1:
                     if not first:
                         priceText.delete("1.0", "end")
-                        priceText.insert("end", "型号\t渠道最低价\n")
+                        priceText.insert("end", "型号\t渠道最低价\t销量\t标题\n")
                         first = True
+
+                    # 最低价查询
                     searchGoods = self.searchGoods(itemModel)
                     if len(searchGoods) > 0:
+
+                        # 商品信息查询
+                        goodsInfo = self.appSearchGoods(searchGoods[0]["articleNumber"], 0)
+                        goodsText = ""
+                        if searchGoods:
+                            goodsText = str(goodsInfo["soldNum"]) + "\t" + goodsInfo["title"]
+
                         spuId = searchGoods[0]["spuId"]
                         goodsDetail = self.getGoodsDetail(spuId)
                         if "minPriceList" in goodsDetail:
                             minPrice = goodsDetail["minPriceList"][0]  # 接口获取列表，可能会存在多个最低价
-                            priceText.insert("end", itemModel + "\t" + str(int(minPrice["curMinPrice"] / 100)) + "\n")
+                            priceText.insert("end", itemModel + "\t" + str(int(minPrice["curMinPrice"] / 100)) + "\t" + goodsText + "\n")
                         else:
-                            priceText.insert("end", itemModel + "\t" + "暂无人上架\n")
+                            priceText.insert("end", itemModel + "\t" + "暂无人上架\t" + goodsText + "\n")
                     else:
                         priceText.insert("end", itemModel + "\t" + "未查询到商品\n")
+
+
+
                 priceText.see("end")
             priceText.insert("end", "获取完成。")
 
@@ -1181,6 +1194,43 @@ class App:
                 else:
                     return defVal
 
+
+
+    """
+    # ============================ app api ============================
+    """
+
+    def appSearchGoods(self, keywords, page, sortMode=1, sortType=1):
+        """
+        APP的搜索接口
+        :param keywords: 关键词
+        :param page: 页数 0 开始
+        :param sortMode: 排序状态
+        :param sortType: 排序类型
+        :return:
+        """
+        # 关键词搜索商品接口
+        url = "https://app.dewu.com/api/v1/h5/search/fire/search/list"
+        param = dict()
+        param["title"] = keywords
+        param["page"] = page
+        param["sortType"] = sortType
+        param["sortMode"] = sortMode
+        param["limit"] = 20
+        param["showHot"] = -1
+        param["isAggr"] = 1
+        param["unionId"] = ""
+
+        res = self.dewuRequest("GET", url, param)
+        if res["data"]["total"] > 0:
+            goods = res["data"]["productList"][0]
+            if goods["articleNumber"] == keywords:  # 关键词必须匹配
+                return goods
+            else:
+                return False
+        else:
+            return False
+
     """
     # ============================ api ============================
     """
@@ -1521,7 +1571,8 @@ class App:
         params = self.__request(params)
         logging.info(
             "[接口][请求][请求地址]" + self.api + url + "[请求参数]" + str(params) + "[请求头]" + str(self.__headers()))  # 日志记录请求
-        res = requests.get(self.api + url, params=params, headers=self.__headers())
+        url = url if bool(re.search("https://", url)) else self.api + url
+        res = requests.get(url, params=params, headers=self.__headers())
         return res
 
     # POST 请求
@@ -1529,8 +1580,8 @@ class App:
         data = self.__request(data)
         logging.info(
             "[接口][请求][请求地址]" + self.api + url + "[请求参数]" + str(data) + "[请求头]" + str(self.__headers()))  # 日志记录请求
-        res = requests.post(
-            self.api + url, data=json.dumps(data), headers=self.__headers())
+        url = url if bool(re.search("https://", url)) else self.api + url
+        res = requests.post(url, data=json.dumps(data), headers=self.__headers())
         return res
 
     # 请求参数处理
@@ -1576,9 +1627,8 @@ class App:
             self.updateOrder()
         if type == "test":  # 测试
             print("{测试}")
-            self.syncOrder()
-            del self.orderList[0]
-            print(self.orderList)
+            self.search_by_keywords_load_more_data("L3.742.4.96.6", 0)
+
             # self.logListBoxDom.insert("end", "123", )
 
         print("结束操作")
