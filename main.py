@@ -11,10 +11,14 @@ import tkinter as tk
 from tkinter import Menu, Toplevel, messagebox
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
+from selenium.webdriver import common
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pynput.mouse import Button, Controller as c1
+
+
+# from pynput.keyboard import Key, Controller as c2
 
 # ----------------------------------------------------
 # | 编译语句 -- --onefile... 用于影藏的调用鼠标键盘工具
@@ -29,7 +33,7 @@ class App:
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.3.4"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.3.6"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
     intervalTime = 10  # 执行间隔时间（秒）
@@ -45,7 +49,7 @@ class App:
     startCycle = False  # 是否开始循环任务2
     autoNum = 0  # 自动循环次数
     firstPutaway = False  # 是否第一次执行 用于修改价格过低的输入框清除重置操作
-    firstGetSubNum = False  # 是否第一次进订单 第一次，则默认使用最大订单号，作为之后的比较用
+    firstGetSubNum = True  # 是否第一次进订单 第一次，则默认使用最大订单号，作为之后的比较用
     orderSubNum = ""  # 比对订单号
     # 请求相关工具参数
     dewuRequestMax = 3  # 请求最大次数
@@ -79,7 +83,6 @@ class App:
         self.root = tk.Tk()
         self.root.title(self.appVersions)
 
-
         frame0 = tk.Frame(self.root, relief="ridge")
         # 设置填充和布局
         frame0.pack(fill="x", ipady=2)
@@ -90,7 +93,8 @@ class App:
         self.intervalTimeEntry.pack(padx=2, pady=0, side="left", fill="x", expand="no")
         self.intervalTimeEntry.insert("0", self.intervalTime)
         tk.Label(frame0, text="秒/次", anchor="w").pack(padx=2, pady=0, side="left", fill="x", expand="no")
-        self.intervalTimeSetBtn = tk.Button(frame0, text="设置", height=1, command=lambda: self.thread_it(App.setInterval, self))
+        self.intervalTimeSetBtn = tk.Button(frame0, text="设置", height=1,
+                                            command=lambda: self.thread_it(App.setInterval, self))
         self.intervalTimeSetBtn.pack(padx=2, pady=0, side="left", fill="x", expand="no")
         # self.intervalTimeConfirmBtn = tk.Button(frame0, text="确定")
 
@@ -99,7 +103,8 @@ class App:
         self.cycleTimesEntry.insert("0", self.cycleTimes)
         self.cycleTimesEntry.pack(padx=2, pady=0, side="left", fill="x", expand="no")
         tk.Label(frame0, text="次", anchor="w").pack(padx=2, pady=0, side="left", fill="x", expand="no")
-        self.cycleTimesSetBtn = tk.Button(frame0, text="设置", height=1, command=lambda: self.thread_it(App.setCycleTimes, self))
+        self.cycleTimesSetBtn = tk.Button(frame0, text="设置", height=1,
+                                          command=lambda: self.thread_it(App.setCycleTimes, self))
         self.cycleTimesSetBtn.pack(padx=2, pady=0, side="left", fill="x", expand="no")
         # self.cycleTimesConfirmBtn = tk.Button(frame0, text="确定")
 
@@ -147,13 +152,17 @@ class App:
         self.startBtn = tk.Button(frameBtn, text="开始执行", command=lambda: self.thread_it(App.startTask, self))
         self.startBtn.pack(padx=15, pady=10, side="left", fill="both", expand="yes")
         # button1.grid(row=0, column=1)
-        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10,side="right",fill="both",expand="yes")
+        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10,
+                                                                                                 side="right",
+                                                                                                 fill="both",
+                                                                                                 expand="yes")
 
         if self.DEBUGER:
             tk.Button(self.root, text="读取文本数据", command=lambda: self.thread_it(App.test, self, "read")).pack(
                 side="left")
             tk.Button(self.root, text="测试下架", command=lambda: self.thread_it(App.test, self, "down")).pack(side="left")
-            tk.Button(self.root, text="测试上架和修改价格", command=lambda: self.thread_it(App.test, self, "up")).pack(side="left")
+            tk.Button(self.root, text="测试上架和修改价格", command=lambda: self.thread_it(App.test, self, "up")).pack(
+                side="left")
             # tk.Button(self.root, text="测试修改价格", command=lambda: self.thread_it(App.test, self, "update")).pack(side="left")
             tk.Button(self.root, text="测试订单", command=lambda: self.thread_it(App.test, self, "order")).pack(side="left")
             tk.Button(self.root, text="测试", command=lambda: self.thread_it(App.test, self, "test")).pack(side="left")
@@ -256,7 +265,8 @@ class App:
         设置顶部信息
         :return: String
         """
-        return "保证金：" + str(self.enterDeposit) + "；执行间隔："  # "保证金：" + str(self.enterDeposit) + " ；执行间隔 " + str(self.intervalTime) + "秒/次；"
+        return "保证金：" + str(
+            self.enterDeposit) + "；执行间隔："  # "保证金：" + str(self.enterDeposit) + " ；执行间隔 " + str(self.intervalTime) + "秒/次；"
 
     def getToken(self):
         """
@@ -424,6 +434,7 @@ class App:
         设置自动执行间隔时间
         :return:
         """
+
         def setInl(intervalTime):
             self.intervalTime = int(intervalTime)  # 获取输入值
             # self.userInfo.configure(text=self.setInfo())  # 设置信息输出内容
@@ -447,6 +458,35 @@ class App:
         self.cycleTimes = int(self.cycleTimesEntry.get())
         messagebox.showinfo("消息", "设置成功")
 
+    # def upTask(self):
+    #     """
+    #     上架任务
+    #     :return:
+    #     """
+    #     # 上架商品操作
+    #     # TODO 上架添加查询是否有上架操作
+    #     self.textLog("======================================上架操作======================================", "sub")
+    #     self.textLog("开始上架操作\n")
+    #     for item in self.saleGoodsList:
+    #         if self.endThread:
+    #             self.endThreadIt()
+    #         no = str(item[0])
+    #         # 搜索货号，判断有无相关商品
+    #         self.textLog("查询商品：货号：" + no)
+    #         goods = self.searchGoods(item[0])
+    #         if len(goods) > 0:
+    #             spuId = goods[0]["spuId"]
+    #             # 查询商品详情
+    #             if not self.enterDepositPlenty:  # 保证金不足跳出循环
+    #                 break
+    #             self.upGoods(spuId, item, no)
+    #         else:
+    #             self.textLog("未查询到商品，跳过出价\n", "error")
+    #         time.sleep(1)
+    #
+    #     self.firstPutaway = False
+    #     self.textLog("======================================上架操作结束======================================", "sub")
+
     def upAndChangeTask(self):
         """
         上架&更新任务
@@ -463,7 +503,8 @@ class App:
         self.firstPutaway = False
 
         self.autoNum += 1
-        self.textLog("======================================第 " + str(self.autoNum) + " 次循环======================================", "sub")
+        self.textLog("======================================第 " + str(
+            self.autoNum) + " 次循环======================================", "sub")
         self.textLog("======================================出价和改价操作======================================", "sub")
 
         notUpdateCount = 0  # 未更新数量
@@ -496,7 +537,8 @@ class App:
                     self.textLog("开始更新价格：货号：" + goodsNo)
 
                     # 价格计算
-                    updateSalePrice = self.updateSalePrice(goodsPrice, binddingGoods['curMinPrice'], binddingGoods['myMaxPrice'], goodsDetail)
+                    updateSalePrice = self.updateSalePrice(goodsPrice, binddingGoods['curMinPrice'],
+                                                           binddingGoods['myMaxPrice'], goodsDetail)
                     uspStatus = updateSalePrice[0]  # 价格计算状态
                     uspSalePrice = updateSalePrice[1]  # 出价
                     uspPrice = updateSalePrice[2]  # 库存价 0：接口欧问题
@@ -523,11 +565,11 @@ class App:
                                 successCount += 1
                                 self.textLog("更新价格成功", "success")
                                 #                               biddingNo, minPrice
-                                setFollow = self.setFollowPrice(detailItem["biddingNo"], int(goodsPrice * 100))
-                                if setFollow:
-                                    self.textLog("设置自动跟价成功\n", "success")
-                                else:
-                                    self.textLog("设置自动跟价失败\n", "error")
+                                # setFollow = self.setFollowPrice(detailItem["biddingNo"], int(goodsPrice * 100))
+                                # if setFollow:
+                                #     self.textLog("设置自动跟价成功\n", "success")
+                                # else:
+                                #     self.textLog("设置自动跟价失败\n", "error")
                     else:
                         notUpdateCount += 1
                         if uspPrice == 0:
@@ -541,7 +583,9 @@ class App:
                                 self.firstPutaway = True
                                 text += "型号\t数量\t库存价格\t渠道最低价\t实际到手价\t上架时间\n"
 
-                            text += goodsNo + "\t1\t" + str(goodsPrice) + "\t" + str(int(int(binddingGoods["curMinPrice"]) / 100)) + "\t" + str(uspPrice) + "\t[" + str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
+                            text += goodsNo + "\t1\t" + str(goodsPrice) + "\t" + str(
+                                int(int(binddingGoods["curMinPrice"]) / 100)) + "\t" + str(uspPrice) + "\t[" + str(
+                                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
 
                             self.saleLowGoodsListText.insert("end", text)
                     updateCount += 1
@@ -565,10 +609,9 @@ class App:
             self.updateOrder()
 
         # 每1分钟执行一次
-        self.textLog("======================================第 " + str(self.autoNum) + " 次循环结束======================================\n", "sub")
+        self.textLog("======================================第 " + str(
+            self.autoNum) + " 次循环结束======================================\n", "sub")
         self.startCycle = False
-
-
 
     def orderTask(self):
         """
@@ -579,7 +622,6 @@ class App:
         :return:
         """
         self.updateOrder()
-
 
     def downGoods(self):
         """
@@ -673,20 +715,20 @@ class App:
                     if add == True:
                         self.textLog(("改价成功" if update else "上架成功"), "success")
 
-                        goodsDetail = self.getGoodsDetail(spuId)
-                        if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
-                            # 设置自动跟价
-                            #                               biddingNo, minPrice
-                            setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(int(price) * 100))
-                            if setFollow:
-                                self.textLog("设置自动跟价成功\n", "success")
-                                return True
-                            else:
-                                self.textLog("设置自动跟价失败\n", "error")
-                                return False
-                        else:
-                            self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
-                            return False
+                        # goodsDetail = self.getGoodsDetail(spuId)
+                        # if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
+                        #     # 设置自动跟价
+                        #     #                               biddingNo, minPrice
+                        #     setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(int(price) * 100))
+                        #     if setFollow:
+                        #         self.textLog("设置自动跟价成功\n", "success")
+                        #         return True
+                        #     else:
+                        #         self.textLog("设置自动跟价失败\n", "error")
+                        #         return False
+                        # else:
+                        #     self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
+                        #     return False
 
                     else:
                         self.textLog(("改价失败：" if update else "上架失败：") + add["msg"] + "\n", "error")
@@ -709,6 +751,132 @@ class App:
                         self.saleLowGoodsListText.insert("end", text)
                         return False
 
+    # def changeGoodsPrice(self):
+    #     """
+    #     修改价格
+    #     :return:
+    #     """
+    #     self.startCycle = True
+    #     self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
+    #     self.firstPutaway = False
+    #
+    #     self.autoNum += 1
+    #     self.textLog("======================================第 " + str(
+    #         self.autoNum) + " 次循环======================================", "sub")
+    #     self.textLog("======================================更新价格操作======================================", "sub")
+    #     haveUpdate = False  # 判断是否有更新
+    #     notUpdateCount = 0  # 未更新数量
+    #     updateCount = 0  # 更新数量
+    #     successCount = 0  # 更新成功数量
+    #     errorCount = 0  # 更新失败数量
+    #     upCount = 0  # 更新失败数量
+    #     for item in self.saleGoodsList:  # 循环库存
+    #         if self.endThread:
+    #             self.endThreadIt()
+    #         no = str(item[0])
+    #         binddingGoods = []
+    #
+    #         biddingList = self.getGoodsList()  # 查询上架商品
+    #
+    #         for listItem in biddingList:  # 循环筛选出已上架商品
+    #             if listItem['articleNumber'] == no:
+    #                 binddingGoods = listItem
+    #
+    #         if binddingGoods:
+    #             haveUpdate = True
+    #             # 商品详情
+    #             spuId = binddingGoods["spuId"]
+    #             goodsDetail = self.getGoodsDetail(spuId)
+    #
+    #             if not ("poundageInfoList" in goodsDetail):
+    #                 self.textLog("查询接口失败：取消商品[" + no + "]价格更新\n", "error")
+    #             else:
+    #                 self.textLog("开始更新价格：货号：" + no)
+    #                 # 价格计算
+    #                 updateSalePrice = self.updateSalePrice(item[2], binddingGoods['curMinPrice'],
+    #                                                        binddingGoods['myMaxPrice'], goodsDetail)
+    #                 if updateSalePrice[0]:  # 计算价格返回true 或 与当前你最低价不同
+    #                     if int(updateSalePrice[1]) == int(binddingGoods['curMinPrice']):  # 出价 与 当前最低价
+    #                         notUpdateCount += 1
+    #                         self.textLog("价格相同，不作更新\n", "warning")
+    #                     else:
+    #                         # 修改价格
+    #                         # # TODO 打包时打开
+    #                         # 直接修改价格
+    #                         # 参数信息 oldQuantity, price, quantity, skuId
+    #                         # update = self.updateGoods(goodsDetail["detailResponseList"][0]["remainQuantity"],
+    #                         #                           updateSalePrice[1],
+    #                         #                           1,
+    #                         #                           goodsDetail["detailResponseList"][0]["skuId"],
+    #                         #                           goodsDetail["detailResponseList"][0]["biddingNo"])
+    #
+    #                         # 下架再重新上架
+    #                         # 下架
+    #                         detailItem = goodsDetail["detailResponseList"][0]
+    #                         self.deleteGoods(
+    #                             detailItem['remainQuantity'], detailItem['price'], detailItem['biddingNo'],
+    #                             detailItem['skuId'])
+    #                         # 查询规格
+    #                         size = self.sizeGoods(spuId)
+    #                         # 上架
+    #                         update = self.addGoods(updateSalePrice[1], 1, size, no)
+    #
+    #                         if update == True:
+    #                             successCount += 1
+    #                             self.textLog("更新价格成功\n", "success")
+    #                         else:
+    #                             errorCount += 1
+    #                             self.textLog("更新价格失败：" + str(update["msg"]) + "\n", "error")
+    #                 else:
+    #                     notUpdateCount += 1
+    #                     if updateSalePrice[2] == 0:
+    #                         self.textLog("不作更新\n", "warning")
+    #                     else:
+    #                         self.textLog("取消更新：价格过低" + "\n", "error")
+    #                         text = ""
+    #                         if self.firstPutaway == False:
+    #                             self.saleLowGoodsListText.delete('1.0', "end")
+    #                             self.firstPutaway = True
+    #                             text += "型号\t数量\t库存价格\t渠道最低价\t实际到手价\t上架时间\n"
+    #                             # text += "上架时间：" + time.strftime("%Y-%m-%d %H:%M:%S %p", time.localtime()) + "\n"
+    #                         text += no + "\t1\t" + str(item[2]) + "\t" + str(
+    #                             int(int(binddingGoods["curMinPrice"]) / 100)) + "\t" + str(
+    #                             updateSalePrice[2]) + "\t[" + str(
+    #                             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())) + "]\n"
+    #                         self.saleLowGoodsListText.insert("end", text)
+    #                 updateCount += 1
+    #         else:
+    #             """与仓库商品未查询到，操作上架"""
+    #             # 搜索货号，判断有无相关商品
+    #             if self.enterDepositPlenty:  # 保证金不足跳出循环
+    #                 self.textLog("查询商品：货号：" + no)
+    #                 goods = self.searchGoods(item[0])
+    #                 if len(goods) > 0:
+    #                     spuId = goods[0]["spuId"]
+    #                     # 查询商品详情
+    #                     upGoods = self.upGoods(spuId, item, no)
+    #                     if upGoods:
+    #                         upCount += 1
+    #                 else:
+    #                     self.textLog("未查询到商品，跳过出价\n", "error")
+    #
+    #         time.sleep(1)
+    #     self.firstPutaway = False  # 回复状态，用于下次循环清空数据
+    #     self.textLog("[修改操作统计：总数：" + str(updateCount) + "；未做修改：" + str(notUpdateCount) + "；修改成功：" + str(
+    #         successCount) + "；修改失败：" + str(errorCount) + "；新上架：" + str(upCount) + "]\n")
+    #
+    #     if not haveUpdate:  # 未做更新
+    #         self.textLog("无商品可以进行更新价格\n")
+    #
+    #     # # TODO 打包时打开
+    #     if not self.DEBUGER:
+    #         self.updateOrder()
+    #
+    #     # 每1分钟执行一次
+    #     self.textLog("======================================第 " +
+    #                  str(self.autoNum) + " 次循环结束======================================\n", "sub")
+    #     self.startCycle = False
+
     def updateOrder(self):
         """
         订单操作
@@ -721,9 +889,15 @@ class App:
         orderList = self.getOrders()  # 获取订单列表，倒序排列
         haveUpdate = False
         if len(orderList) > 0:  # 有订单
-            order = orderList[0]
-            if not self.firstGetSubNum:  # 第一次，不操作订单的减库操作
-                self.orderSubNum = order["subOrderNo"]  # 获取订单号，存储用于下次比较
+            # order = orderList[0]
+            if self.firstGetSubNum:  # 第一次，不操作订单的减库操作
+                self.firstGetSubNum = False
+                # 获取最大订单号
+                orderMixNo = 0
+                for item in orderList:
+                    if int(item["subOrderNo"]) > orderMixNo:
+                        orderMixNo = int(item["subOrderNo"])
+                self.orderSubNum = orderMixNo  # 获取订单号，存储用于下次比较
 
             # 新增订单数量 统计
             newOrderCount = 0
@@ -733,11 +907,15 @@ class App:
             self.textLog("新增订单：" + str(newOrderCount) + " 单")
             self.textLog("")
 
+            orderNo = 0
             # 新增订单业务操作
             for orderItem in orderList:
                 if self.endThread:
                     self.endThreadIt()
                 if int(orderItem["subOrderNo"]) > int(self.orderSubNum):  # 比对订单号：有订单号大于存储的订单号，说明有新订单
+                    if int(orderItem["subOrderNo"]) > orderNo:  # 有新订单时 取出最大的订单号供下次判断
+                        orderNo = int(orderItem["subOrderNo"])
+
                     for saleItem in self.saleGoodsList:  # 查找匹配的库存商品
                         if saleItem[0] == orderItem['articleNumber']:
                             count = int(saleItem[1])
@@ -749,18 +927,23 @@ class App:
                                 saleItem[1] = str(count)
 
                                 # 卖出一个再重新上架一个
-                                upGoods = self.upGoods(orderItem['spuId'], saleItem, saleItem[0])
+                                # upGoods = self.upGoods(orderItem['spuId'], saleItem, saleItem[0])
 
-                                if upGoods:
-                                    txt = ""
-                                    # 重新拼接文本
-                                    for txtItem in self.saleGoodsList:
-                                        txt += txtItem[0] + "\t" + txtItem[1] + "\t" + txtItem[2] + "\n"
+                                # if upGoods:
+                                txt = ""
+                                # 重新拼接文本
+                                for txtItem in self.saleGoodsList:
+                                    txt += txtItem[0] + "\t" + txtItem[1] + "\t" + txtItem[2] + "\n"
 
-                                    self.saleGoodsListText.delete('1.0', 'end')
-                                    self.saleGoodsListText.insert('end', txt)  # 文本写入
+                                self.saleGoodsListText.delete('1.0', 'end')
+                                self.saleGoodsListText.insert('end', txt)  # 文本写入
 
                                 haveUpdate = True
+                            else:
+                                self.textLog("库存不足：货号：" + saleItem[0])
+
+            if orderNo > 0:
+                self.orderSubNum = orderNo  # 结束订单检查获取替换最大订单号
 
         if not haveUpdate:
             self.textLog("无新增库存相关商品订单")
@@ -946,6 +1129,7 @@ class App:
     """
     # ============================ text log 文本日志 ============================
     """
+
     def listboxLog(self, log, colorType="def"):
         """
         列表框日志输出显示
@@ -1060,7 +1244,7 @@ class App:
         self.userInfo.configure(text=self.setInfo())
         return minfo['data']['enterDeposit']
 
-    def getOrders(self):
+    def getOrders(self, page=1):
         """
         获取订单
         :return:
@@ -1071,7 +1255,7 @@ class App:
         data['bizType'] = "0"
         data['endTime'] = time.strftime(
             "%Y-%m-%d", time.localtime()) + " 23:59:59"
-        data['pageNo'] = 1
+        data['pageNo'] = page
         data['pageSize'] = 20
         data['startTime'] = "2020-11-30 00:00:00"
         data['status'] = 1
@@ -1079,6 +1263,9 @@ class App:
         orderList = self.dewuRequest("POST", '/orders/list', data)
         # total = orderList['data']['total']
         orderList = orderList['data']['list']
+        if len(orderList):
+            page += 1
+            orderList = orderList + self.getOrders(page)
         return orderList
 
     def getGoodsList(self, shelf=False, page=1, statistics=True):
@@ -1407,8 +1594,10 @@ class App:
             print("{更新}")
         if type == "order":  # 订单
             print("{订单}")
+            self.updateOrder()
         if type == "test":  # 测试
-            self.logListBoxDom.insert("end", "123", )
+            print("{测试}")
+            # self.logListBoxDom.insert("end", "123", )
 
         print("结束操作")
 
