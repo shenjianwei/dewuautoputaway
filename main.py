@@ -87,6 +87,9 @@ class App:
     toplevelSetInterval = ""  # 设置间隔时间弹窗
     topSetIntervalEntry = ""  # 设置间隔时间文本输入框 Token 值
 
+    # 查看渠道价弹窗
+    topWatchCurMinPrice = ""  # 弹窗
+
     def __init__(self):
         self.initLogging()  # 初始化日志
 
@@ -165,7 +168,8 @@ class App:
         self.startBtn = tk.Button(frameBtn, text="开始执行", command=lambda: self.thread_it(App.startTask, self))
         self.startBtn.pack(padx=15, pady=10, side="left", fill="both", expand="yes")
         # button1.grid(row=0, column=1)
-        tk.Button(frameBtn, text="结束执行", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
+        tk.Button(frameBtn, text="结束执行", fg="red", command=lambda: self.thread_it(App.endTask, self)).pack(padx=15, pady=10, side="left", fill="both", expand="yes")
+        tk.Button(frameBtn, text="获取价格", fg="#2db7f5", command=lambda: self.thread_it(App.watchCurMinPrice, self)).pack(padx=15, pady=10, side="right", fill="both", expand="yes")
 
         if self.DEBUGER:
             tk.Button(self.root, text="读取文本数据", command=lambda: self.thread_it(App.test, self, "read")).pack(
@@ -438,9 +442,63 @@ class App:
                 tokenValue = jsonItem['value']
         return tokenValue
 
+    def watchCurMinPrice(self):
+        """
+        查询渠道最低价格弹窗
+        :return:
+        """
+        def getPriceText():
+            """
+            查询渠道价格，并输出至页面
+            :return:
+            """
+            model = priceText.get("1.0", "end")
+            model = model.split("\n")
+            priceText.delete("1.0", "end")
+            priceText.insert("end", "获取中，请稍等...")
+            first = False
+            for item in model:
+                time.sleep(1)
+                item = item.split("\t")
+                itemModel = item[0]
+                print(len(item))
+                if "型号" in itemModel:
+                    continue
+                if len(item) > 1:
+                    if not first:
+                        priceText.delete("1.0", "end")
+                        priceText.insert("end", "型号\t渠道最低价\n")
+                        first = True
+                    searchGoods = self.searchGoods(itemModel)
+                    if len(searchGoods) > 0:
+                        spuId = searchGoods[0]["spuId"]
+                        goodsDetail = self.getGoodsDetail(spuId)
+                        if "minPriceList" in goodsDetail:
+                            minPrice = goodsDetail["minPriceList"][0]  # 接口获取列表，可能会存在多个最低价
+                            priceText.insert("end", itemModel + "\t" + str(int(minPrice["curMinPrice"] / 100)) + "\n")
+                        else:
+                            priceText.insert("end", itemModel + "\t" + "暂无人上架\n")
+                        print(goodsDetail)
+                    else:
+                        priceText.insert("end", itemModel + "\t" + "未查询到商品\n")
+                        print("未查询到")
+                priceText.see("end")
+            priceText.insert("end", "获取完成。")
+
+        self.topWatchCurMinPrice = top = Toplevel()
+        top.title("查看渠道最低价格")
+        self.endThread = True
+        tk.Label(top, text="价格获取框", anchor="w", justify="left").pack(fill="both", expand="no")
+        priceText = tk.Text(top)
+        priceText.pack(fill="both", expand="yes")
+        tk.Button(top, text="获取价格", width=30, height=2, command=lambda: self.thread_it(getPriceText)).pack()
+
+
+
+
     def topSetInterval(self):
         """
-
+        时间设置弹窗
         :return:
         """
         self.toplevelSetInterval = top = Toplevel()
