@@ -33,7 +33,7 @@ class App:
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.3.6"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.3.8"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
     intervalTime = (10 if DEBUGER else 300)  # 执行间隔时间（秒）
@@ -493,9 +493,6 @@ class App:
         priceText.pack(fill="both", expand="yes")
         tk.Button(top, text="获取价格", width=30, height=2, command=lambda: self.thread_it(getPriceText)).pack()
 
-
-
-
     def topSetInterval(self):
         """
         时间设置弹窗
@@ -539,6 +536,18 @@ class App:
     def setCycleTimes(self):
         self.cycleTimes = int(self.cycleTimesEntry.get())
         messagebox.showinfo("消息", "设置成功")
+
+    def calculateFollowPrice(self, price, goodsDetail):
+        price = int(price)
+        curMinPrice = 0
+        addPrice = price
+        while curMinPrice < price:
+            addPrice += 1
+            poundagePrice = self.poundagePrice(addPrice, goodsDetail["poundageInfoList"][0]["poundageDetailInfoList"])
+            curMinPrice = addPrice - poundagePrice
+
+        print(addPrice, curMinPrice)
+        return [addPrice, curMinPrice]
 
     # def upTask(self):
     #     """
@@ -651,12 +660,14 @@ class App:
                             if upGoods == True:  # 必须 == True，数组[...]判断也是True
                                 successCount += 1
                                 self.textLog("更新价格成功", "success")
-                                #                               biddingNo, minPrice
-                                # setFollow = self.setFollowPrice(detailItem["biddingNo"], int(goodsPrice * 100))
-                                # if setFollow:
-                                #     self.textLog("设置自动跟价成功\n", "success")
-                                # else:
-                                #     self.textLog("设置自动跟价失败\n", "error")
+                                                              # biddingNo, minPrice
+                                followPrice = self.calculateFollowPrice(goodsPrice, goodsDetail)
+                                self.textLog("计算跟价价格：" + str(followPrice[0]))
+                                setFollow = self.setFollowPrice(detailItem["biddingNo"], int(followPrice[0] * 100))
+                                if setFollow:
+                                    self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + followPrice[1] + "\n", "success")
+                                else:
+                                    self.textLog("设置自动跟价失败\n", "error")
                     else:
                         notUpdateCount += 1
                         if uspPrice == 0:
@@ -806,20 +817,22 @@ class App:
                     if add == True:
                         self.textLog(("改价成功" if update else "上架成功"), "success")
 
-                        # goodsDetail = self.getGoodsDetail(spuId)
-                        # if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
-                        #     # 设置自动跟价
-                        #     #                               biddingNo, minPrice
-                        #     setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(int(price) * 100))
-                        #     if setFollow:
-                        #         self.textLog("设置自动跟价成功\n", "success")
-                        #         return True
-                        #     else:
-                        #         self.textLog("设置自动跟价失败\n", "error")
-                        #         return False
-                        # else:
-                        #     self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
-                        #     return False
+                        goodsDetail = self.getGoodsDetail(spuId)
+                        if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
+                            # 设置自动跟价
+                            #                               biddingNo, minPrice
+                            followPrice = self.calculateFollowPrice(price, goodsDetail)
+                            self.textLog("计算跟价价格：" + str(followPrice[0]))
+                            setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(followPrice[0] * 100))
+                            if setFollow:
+                                self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + followPrice[1] + "\n", "success")
+                                return True
+                            else:
+                                self.textLog("设置自动跟价失败\n", "error")
+                                return False
+                        else:
+                            self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
+                            return False
 
                     else:
                         self.textLog(("改价失败：" if update else "上架失败：") + add["msg"] + "\n", "error")
@@ -1186,6 +1199,8 @@ class App:
         data['minPrice'] = minPrice
         data['type'] = 2
         setFollow = self.dewuRequest("POST", '/bidding/autoBiddingSetting', data)
+        if not setFollow:
+            return False
         if setFollow['code'] == 200:
             return True
         else:
