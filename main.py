@@ -65,6 +65,7 @@ class App:
     everyHaveUpdate = False  # 每次是否有新订单
     newOrderCount = 0  # 新订单数量
     newUpGoodsInfo = ""  # 新上架商品信息
+    firstOrder = False
 
 
     # 元素
@@ -129,19 +130,19 @@ class App:
         frame1 = tk.Frame(self.root, relief="ridge")
         # 设置填充和布局
         frame1.pack(fill="x", ipady=2)
-        tk.Label(frame1, text="上架库存：", anchor="w").pack(padx=2, pady=0, side="left", fill="x", expand="yes")
-        tk.Label(frame1, text="价格过低商品日志：", anchor="w").pack(padx=2, pady=0, side="left", fill="x", expand="yes")
-        # tk.Label(frame1, text="待发货销售日志：", anchor="w").pack(padx=2, pady=0, side="left", fill="x", expand="yes")
+        tk.Label(frame1, text="上架库存：", anchor="w", height=1, width=40).pack(padx=2, pady=0, side="left", fill="x", expand="yes")
+        tk.Label(frame1, text="价格过低商品日志：", anchor="w", height=1, width=40).pack(padx=2, pady=0, side="left", fill="x", expand="yes")
+        tk.Label(frame1, text="待发货销售日志：", anchor="w", height=1, width=40).pack(padx=2, pady=0, side="right", fill="x", expand="yes")
 
         frame2 = tk.Frame(self.root, relief="ridge")
         # 设置填充和布局
         frame2.pack(fill="x", ipady=3)
-        self.saleGoodsListText = tk.Text(frame2, width=80, height=12)  # 43
-        self.saleGoodsListText.pack(padx=2, pady=0, side="left", fill="both", expand="yes")
-        self.saleLowGoodsListText = tk.Text(frame2, width=80, height=12)  # 47
-        self.saleLowGoodsListText.pack(padx=2, pady=0, side="left", fill="both", expand="yes")
-        # self.orderListText = tk.Text(frame2, width=48, height=12)
-        # self.orderListText.pack(padx=2, pady=0, side="left", fill="both", expand="yes")
+        self.saleGoodsListText = tk.Text(frame2, width=40, height=12)  # 43
+        self.saleGoodsListText.pack(padx=2, pady=0, side="left", fill="x", expand="yes")
+        self.saleLowGoodsListText = tk.Text(frame2, width=40, height=12)  # 47
+        self.saleLowGoodsListText.pack(padx=2, pady=0, side="left", fill="x", expand="yes")
+        self.orderListText = tk.Text(frame2, width=40, height=12)
+        self.orderListText.pack(padx=2, pady=0, side="right", fill="x", expand="yes")
 
         tk.Label(self.root, text="执行日志：", anchor="w").pack(side="top", fill="x")
         # self.logListBoxDom = tk.Listbox(self.root)
@@ -524,6 +525,7 @@ class App:
         if self.autoNum > 0:
             self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
         self.firstPutaway = False
+        self.firstOrder = False
 
         self.autoNum += 1
         self.textLog("======================================第 " + str(
@@ -825,13 +827,13 @@ class App:
                             if count > 0:  # 有库存
                                 count -= 1
 
-                                # 卖出一个再重新上架一个
-                                # upGoods = self.upGoods(orderItem['spuId'], saleItem, saleItem[0])
-
-                                # if upGoods:
-
                                 self.everyHaveUpdate = True
                                 self.newUpGoodsInfo += "新上架：[货号：" + saleItem[0] + "；库存(余)：" + str(count) + " (" + saleItem[1] + "-1)]\n"
+
+                                if not self.firstOrder:
+                                    self.firstOrder = True
+                                    self.orderListText.insert("end", "货号\t数量\t库存价格\t到手价格\t睡时间\n")
+                                    self.orderListText.insert("end", str(saleItem[0]) + "\t1\t" + str(saleItem[2]) + "\t" + str(orderItem["actualAmount"] / 100) + "\t[" + str(orderItem["payTime"]) + "]\n")
 
                                 saleItem[1] = str(count)  # 修改库存
 
@@ -1503,7 +1505,9 @@ class App:
             self.updateOrder()
         if type == "test":  # 测试
             print("{测试}")
-            self.getGoodsList()
+            self.syncOrder()
+            del self.orderList[0]
+            print(self.orderList)
             # self.logListBoxDom.insert("end", "123", )
 
         print("结束操作")
