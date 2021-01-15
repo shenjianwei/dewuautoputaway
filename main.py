@@ -34,7 +34,7 @@ class App:
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.4.1"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.4.4"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
     intervalTime = (10 if DEBUGER else 300)  # 执行间隔时间（秒）
@@ -213,11 +213,11 @@ class App:
             self.setStartBtn(False)
 
             # 手动重新开始，订单操作重新获取最大订单号，否则继续沿用之前的订单号（手动可能包含操了库存）
-            if not self.autoStart:
+            if not self.autoStart:  # 手动执行才操作的内容
                 self.firstGetSubNum = True
 
-            """文本数据读取"""
-            self.getSaleGoodsList()
+                """文本数据读取"""
+                self.getSaleGoodsList()  # 在第一次手动中获取防止再次重新获取文本数据
 
             """获取保证金"""
             self.enterDeposit = self.getMerchantInfo()
