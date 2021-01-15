@@ -479,7 +479,7 @@ class App:
                         # 商品信息查询
                         goodsInfo = self.appSearchGoods(searchGoods[0]["articleNumber"], 0)
                         goodsText = ""
-                        if searchGoods:
+                        if goodsInfo:
                             goodsText = str(goodsInfo["soldNum"]) + "\t" + goodsInfo["title"]
 
                         spuId = searchGoods[0]["spuId"]
@@ -914,7 +914,7 @@ class App:
 
                                 if not self.firstOrder:
                                     self.firstOrder = True
-                                    self.orderListText.insert("end", "货号\t数量\t库存价格\t到手价格\t睡时间\n")
+                                    self.orderListText.insert("end", "货号\t数量\t库存价格\t到手价格\t下单时间\n")
                                     self.orderListText.insert("end", str(saleItem[0]) + "\t1\t" + str(saleItem[2]) + "\t" + str(orderItem["actualAmount"] / 100) + "\t[" + str(orderItem["payTime"]) + "]\n")
 
                                 saleItem[1] = str(count)  # 修改库存
@@ -1224,7 +1224,7 @@ class App:
         res = self.dewuRequest("GET", url, param)
         if res["data"]["total"] > 0:
             goods = res["data"]["productList"][0]
-            if goods["articleNumber"] == keywords:  # 关键词必须匹配
+            if keywords in goods["articleNumber"]:  # 关键词必须匹配
                 return goods
             else:
                 return False
