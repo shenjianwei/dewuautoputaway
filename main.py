@@ -204,6 +204,7 @@ class App:
         """初始化任务"""
         self.logTextDom.delete('1.0', 'end')  # 清空文本日志
         self.endThread = False
+        self.firstOrder = False
         self.autoNum = 0
         logging.info("[脚本开始]")
 
@@ -604,7 +605,6 @@ class App:
         if self.autoNum > 0:
             self.logTextDom.delete("1.0", "end")  # 每次循环清空文本
         self.firstPutaway = False
-        self.firstOrder = False
 
         self.autoNum += 1
         self.textLog("======================================第 " + str(
@@ -915,7 +915,7 @@ class App:
                                 if not self.firstOrder:
                                     self.firstOrder = True
                                     self.orderListText.insert("end", "货号\t数量\t库存价格\t到手价格\t下单时间\n")
-                                    self.orderListText.insert("end", str(saleItem[0]) + "\t1\t" + str(saleItem[2]) + "\t" + str(orderItem["actualAmount"] / 100) + "\t[" + str(orderItem["payTime"]) + "]\n")
+                                self.orderListText.insert("end", str(saleItem[0]) + "\t1\t" + str(saleItem[2]) + "\t" + str(orderItem["actualAmount"] / 100) + "\t[" + str(orderItem["payTime"]) + "]\n")
 
                                 saleItem[1] = str(count)  # 修改库存
 
