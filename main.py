@@ -887,12 +887,16 @@ class App(wx.adv.TaskBarIcon):
                             #                               biddingNo, minPrice
                             followPrice = self.calculateFollowPrice(price, goodsDetail)
                             self.textLog("计算跟价价格：" + str(followPrice[0]))
-                            setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(followPrice[0] * 100))
-                            if setFollow:
-                                self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
-                                return True
+                            if len(goodsDetail["detailResponseList"]) > 0:
+                                setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(followPrice[0] * 100))
+                                if setFollow:
+                                    self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
+                                    return True
+                                else:
+                                    self.textLog("设置自动跟价失败\n", "error")
+                                    return False
                             else:
-                                self.textLog("设置自动跟价失败\n", "error")
+                                self.textLog("设置自动跟价失败, 未找到biddingNo参数\n", "error")
                                 return False
                         else:
                             self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
