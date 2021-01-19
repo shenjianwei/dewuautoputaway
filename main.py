@@ -7,12 +7,13 @@ import sys
 import threading
 import requests
 import time
+import wx
+import wx.adv
 import hashlib
 import tkinter as tk
 from tkinter import Menu, Toplevel, messagebox
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
-from selenium.webdriver import common
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -25,8 +26,10 @@ from pynput.mouse import Button, Controller as c1
 # | 编译语句 -- --onefile... 用于影藏的调用鼠标键盘工具
 # | pyinstaller auto_putaway.py --onefile --hidden-import=pynput.keyboard._xorg --hidden-import=pynput.mouse._xorg --hidden-import=pynput.keyboard._win32 --hidden-import=pynput.mouse._win32
 # ----------------------------------------------------
+import winapi
 
-class App:
+
+class App(wx.adv.TaskBarIcon):
     """
     config
 
@@ -34,10 +37,10 @@ class App:
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.4.4"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.5.1"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
-    intervalTime = (10 if DEBUGER else 300)  # 执行间隔时间（秒）
+    intervalTime = (10 if DEBUGER else 60)  # 执行间隔时间（秒）
     token = ""  # Token值
     url = 'https://stark.dewu.com'  # 请求域名
     api = url + '/api/v1/h5/biz'  # 请求地址
@@ -73,7 +76,7 @@ class App:
     intervalTimeEntry = ""  # 间隔时间输入框
     intervalTimeSetBtn = ""  # 间隔时间 设置按钮
 
-    cycleTimes = (5 if DEBUGER else 5)  # 循环次数
+    cycleTimes = (5 if DEBUGER else 10)  # 循环次数
     cycleTimesEntry = ""  # 循环次数输入框
     cycleTimesSetBtn = ""  # 循环次数 设置按钮
 
@@ -91,7 +94,28 @@ class App:
     # 查看渠道价弹窗
     topWatchCurMinPrice = ""  # 弹窗
 
+    # 浏览器参数
+    driverSelf = ""
+
+    # 托盘参数
+    ICON = './lib/favicon.ico'
+    TITLE = '得物App自动上架系统托盘图标'
+    HAVE_NEW_MSG = False
+    STOP_FLASH = True
+
+    MENU_ID1, MENU_ID2 = wx.NewIdRef(count=2)
+
     def __init__(self):
+        super().__init__()
+
+        # 设置图标和提示
+        self.SetIcon(wx.Icon(self.ICON), self.TITLE)
+
+        # 绑定菜单项事件
+        self.Bind(wx.EVT_MENU, self.onShow, id=self.MENU_ID1)
+        self.Bind(wx.EVT_MENU, self.onExit, id=self.MENU_ID2)
+        self.Bind(wx.adv.EVT_TASKBAR_LEFT_DCLICK, self.onShow)
+
         self.initLogging()  # 初始化日志
 
         self.root = tk.Tk()
@@ -180,11 +204,19 @@ class App:
                 side="left")
             # tk.Button(self.root, text="测试修改价格", command=lambda: self.thread_it(App.test, self, "update")).pack(side="left")
             tk.Button(self.root, text="测试订单", command=lambda: self.thread_it(App.test, self, "order")).pack(side="left")
+            tk.Button(self.root, text="测试消息提示闪烁", command=lambda: self.thread_it(App.test, self, "test_msg")).pack(side="left")
             tk.Button(self.root, text="测试", command=lambda: self.thread_it(App.test, self, "test")).pack(side="left")
 
         # 初始化获得Token
         self.thread_it(App.getToken, self)
+        self.root.protocol("WM_DELETE_WINDOW", self.callbackClose)
         self.root.mainloop()
+
+    def callbackClose(self):
+        if self.driverSelf != "":
+            self.driverSelf.close()
+        wx.Exit()
+
 
     def endTask(self):
         """
@@ -193,6 +225,9 @@ class App:
         """
         end = messagebox.askokcancel('提示', '要执行此操作吗')
         if end:
+            if self.driverSelf != "":
+                time.sleep(1)
+                self.driverSelf.close()
             self.autoStart = False  # 关闭自动开始标记
             self.endThread = True
 
@@ -389,7 +424,7 @@ class App:
         if not os.path.isfile(chromedriver):
             messagebox.showerror("警告", "缺少浏览器 chromedriver.exe 驱动，请将驱动放置在 lib 目录中")
 
-        driver = webdriver.Chrome(executable_path=chromedriver, options=options)
+        self.driverSelf = driver = webdriver.Chrome(executable_path=chromedriver, options=options)
         # 通过浏览器的dev_tool在get页面钱将.webdriver属性改为"undefined"
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
             "source": """Object.defineProperty(navigator, 'webdriver', {get: () => undefined})""",
@@ -420,11 +455,28 @@ class App:
         driver.find_element_by_xpath(
             '//*[@placeholder="请输入密码"]').send_keys('jeefNO1')
         driver.find_element_by_class_name('el-button').click()
-        time.sleep(3)
-        cookies = driver.get_cookies()  # Selenium为我们提供了get_cookies来获取登录cookies
+        getCount = 0
+        getCookies = False
+        token = ""
+        while getCount < 10:
+            time.sleep(1)
+            getCount += 1
+            cookies = driver.get_cookies()
+            token = self.getJsonToken(cookies, "mchToken")
+            if token != "":
+                getCount = 10
+                getCookies = True
+
+        if not getCookies:
+            self.textLog("Token获取失败请重新尝试", "error")
+            time.sleep(1)
+            driver.close()
+            self.endThreadIt()
+
+        time.sleep(1)
         driver.close()  # 获取cookies便可以关闭浏览器
+        self.driverSelf = ""
         # 获取cookies中的token
-        token = self.getJsonToken(cookies, "mchToken")
         self.openFile(self.dewuTokenFilePath, 'w', token)  # 写入token文件中
         self.tokenEntry.delete("0", "end")
         self.tokenEntry.insert("0", token)  # 写入输入框展示
@@ -928,6 +980,8 @@ class App:
                                 self.saleGoodsListText.delete('1.0', 'end')
                                 self.saleGoodsListText.insert('end', txt)  # 文本写入
 
+                                self.startFlash()  # 打开闪烁提示
+
                                 self.haveUpdate = True
                             # else:
                                 # self.textLog("库存不足：货号：" + saleItem[0])
@@ -1113,33 +1167,6 @@ class App:
     """
     # ============================ text log 文本日志 ============================
     """
-
-    def listboxLog(self, log, colorType="def"):
-        """
-        列表框日志输出显示
-        :param log: 日志内容
-        :param colorType: 日志类型：error、success、info、sub、warning
-        :return:
-        """
-        if colorType == "error":
-            tag = 'tag_error'
-            color = '#ed4014'
-        elif colorType == "success":
-            tag = 'tag_success'
-            color = '#19be6b'
-        elif colorType == "info":
-            tag = 'tag_info'
-            color = '#2db7f5'
-        elif colorType == "sub":
-            tag = 'tag_sub'
-            color = '#515a6e'
-        elif colorType == "warning":
-            tag = 'tag_warning'
-            color = '#ff9900'
-        else:
-            tag = 'tag_def'
-            color = '#000000'
-
     def textLog(self, log, colorType="def"):
         """
         文本日志输出显示
@@ -1606,6 +1633,55 @@ class App:
         }
 
     """
+    # ================================ 托盘 ==========================
+    """
+    def CreatePopupMenu(self):
+        '''生成菜单'''
+
+        menu = wx.Menu()
+        # 添加两个菜单项
+        menu.Append(self.MENU_ID1, '显示')
+        menu.Append(self.MENU_ID2, '退出')
+        return menu
+
+    def onShow(self, event):
+        self.root.wm_attributes('-topmost', 1)
+        self.root.wm_attributes('-topmost', 0)
+        self.stopFlash()
+        # wx.MessageBox('111')
+
+    def onExit(self, event):
+        wx.Exit()
+        sys.exit()
+
+    def newMessage(self):
+        if self.HAVE_NEW_MSG == False:
+            self.STOP_FLASH = True
+            self.startFlash()
+        else:
+            self.stopFlash()
+
+    # 开始闪烁
+    def startFlash(self):
+        while self.STOP_FLASH:
+            time.sleep(0.5)
+            self.changeIcon()
+
+    def stopFlash(self):
+        self.STOP_FLASH = False
+        time.sleep(1)
+        self.SetIcon(wx.Icon("./lib/favicon.ico"), self.TITLE)
+        self.ICON = "./lib/favicon.ico"
+
+    def changeIcon(self):
+        if self.ICON == "./lib/favicon.ico":
+            self.SetIcon(wx.Icon("favicon-hide.ico"), self.TITLE)
+            self.ICON = "./lib/favicon-hide.ico"
+        else:
+            self.SetIcon(wx.Icon("favicon.ico"), self.TITLE)
+            self.ICON = "./lib/favicon.ico"
+
+    """
     # ================================ 测试 ==========================
     """
 
@@ -1625,13 +1701,33 @@ class App:
         if type == "order":  # 订单
             print("{订单}")
             self.updateOrder()
+        if type == "test_msg":  # 测试消息闪烁提示
+            self.newMessage()
         if type == "test":  # 测试
             print("{测试}")
-            self.search_by_keywords_load_more_data("L3.742.4.96.6", 0)
+            # toast = ToastNotifier()
+            # toast.show_toast(title="新订单", msg="您有一条新的订单请注意查看",
+            #                  icon_path="/favicon.ico", duration=5)
+            # winapi.flash(self.SetIcon)
+            # self.stopFlash()
+            # self.search_by_keywords_load_more_data("L3.742.4.96.6", 0)
 
             # self.logListBoxDom.insert("end", "123", )
 
         print("结束操作")
 
+class MyFrame(wx.Frame):
+    def __init__(self):
+        super().__init__()
+        App()
 
-app = App()
+
+class MyApp(wx.App):
+    def OnInit(self):
+        MyFrame()
+        return True
+
+
+if __name__ == "__main__":
+    app = MyApp()
+    app.MainLoop()
