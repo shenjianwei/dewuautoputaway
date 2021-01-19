@@ -1655,7 +1655,8 @@ class App(wx.adv.TaskBarIcon):
         sys.exit()
 
     def newMessage(self):
-        if self.HAVE_NEW_MSG == False:
+        if not self.HAVE_NEW_MSG:
+            self.stopFlash()
             self.STOP_FLASH = True
             self.startFlash()
         else:
@@ -1669,16 +1670,16 @@ class App(wx.adv.TaskBarIcon):
 
     def stopFlash(self):
         self.STOP_FLASH = False
-        time.sleep(1)
+        time.sleep(3)
         self.SetIcon(wx.Icon("./lib/favicon.ico"), self.TITLE)
         self.ICON = "./lib/favicon.ico"
 
     def changeIcon(self):
         if self.ICON == "./lib/favicon.ico":
-            self.SetIcon(wx.Icon("favicon-hide.ico"), self.TITLE)
+            self.SetIcon(wx.Icon("./lib/favicon-hide.ico"), self.TITLE)
             self.ICON = "./lib/favicon-hide.ico"
         else:
-            self.SetIcon(wx.Icon("favicon.ico"), self.TITLE)
+            self.SetIcon(wx.Icon("./lib/favicon.ico"), self.TITLE)
             self.ICON = "./lib/favicon.ico"
 
     """
