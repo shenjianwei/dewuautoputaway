@@ -18,16 +18,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pynput.mouse import Button, Controller as c1
-
-
 # from pynput.keyboard import Key, Controller as c2
 
 # ----------------------------------------------------
 # | 编译语句 -- --onefile... 用于影藏的调用鼠标键盘工具
 # | pyinstaller auto_putaway.py --onefile --hidden-import=pynput.keyboard._xorg --hidden-import=pynput.mouse._xorg --hidden-import=pynput.keyboard._win32 --hidden-import=pynput.mouse._win32
 # ----------------------------------------------------
-import winapi
-
 
 class App(wx.adv.TaskBarIcon):
     """
@@ -37,7 +33,7 @@ class App(wx.adv.TaskBarIcon):
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.5.1"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.5.3"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
     intervalTime = (10 if DEBUGER else 60)  # 执行间隔时间（秒）
@@ -930,13 +926,9 @@ class App(wx.adv.TaskBarIcon):
         self.textLog("初始化订单")
         biddingList = self.getOrders()
         if len(biddingList) > 0:
-            # self.orderListText.delete("1.0", "end")
-            # self.orderListText.insert("end", "货号\t数量\t库存价格\t到手价格\t睡时间\n")
             for item in biddingList:
                 if not item["subOrderNo"] in self.orderList:
-                    # if not "110105689535684777" == item["subOrderNo"]:
                     self.orderList.append(item["subOrderNo"])  # 存入订单数组
-            #     self.orderListText.insert("end", "articleNumber\t1\t\tactualAmount")
 
     def updateOrder(self):
         """
@@ -984,7 +976,7 @@ class App(wx.adv.TaskBarIcon):
                                 self.saleGoodsListText.delete('1.0', 'end')
                                 self.saleGoodsListText.insert('end', txt)  # 文本写入
 
-                                self.startFlash()  # 打开闪烁提示
+                                self.newMessage()  # 打开闪烁提示
 
                                 self.haveUpdate = True
                             # else:
@@ -1316,8 +1308,9 @@ class App(wx.adv.TaskBarIcon):
         data['subTypeListString'] = "0,13"
         orderList = self.dewuRequest("POST", '/orders/list', data)
         # total = orderList['data']['total']
+        listPage = orderList['data']['pages']
         orderList = orderList['data']['list']
-        if len(orderList):
+        if page < listPage:
             page += 1
             orderList = orderList + self.getOrders(page)
         return orderList
@@ -1339,8 +1332,9 @@ class App(wx.adv.TaskBarIcon):
         minfo = self.dewuRequest("POST", '/bidding/biddingList', data)
 
         total = minfo['data']['total']  # 数量
+        listPage = minfo['data']['page']  # 数量
         goodsList = minfo['data']['list']  # 数据列表
-        if len(goodsList) > 0:
+        if page < listPage:
             time.sleep(1)
             page += 1
             goodsList = goodsList + self.getGoodsList(shelf, page, False)
