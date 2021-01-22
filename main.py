@@ -371,14 +371,19 @@ class App(wx.adv.TaskBarIcon):
             if self.endThread:
                 self.endThreadIt()
             items = item.split("\t")
-            if len(items) == self.txtParamNum:
+            if len(items) >= self.txtParamNum:  # 大于3个的可执行
                 haveGoods = False
                 for listsItem in lists:
                     if listsItem[0] == items[0]:
                         haveGoods = True
                         self.textLog("存在相同型号商品：" + listsItem[0], "warning")
                 if haveGoods == False:
+                    for i in range(len(items)):  # 排除掉大于3个的数据
+                        if not i < self.txtParamNum:
+                            print(items, i)
+                            del items[self.txtParamNum]
                     self.textLog(str(items))
+                    items.append(True)
                     lists.append(items)
 
         if len(lists) <= 0:
@@ -670,6 +675,7 @@ class App(wx.adv.TaskBarIcon):
             goodsNo = str(item[0])  # 库存商品型号
             # goodsCount = int(item[1])  # 库存商品数量
             goodsPrice = int(item[2])  # 库存商品价格
+            haveGoods = item[3]  # 是否存在商品
             binddingGoods = []  # 上架商品信息
 
             biddingList = self.getGoodsList()  # 查询上架商品
@@ -683,6 +689,7 @@ class App(wx.adv.TaskBarIcon):
             self.updateOrder()
 
             if binddingGoods:
+                """修改已经上架的商品"""
                 # 商品详情
                 spuId = binddingGoods["spuId"]
                 goodsDetail = self.getGoodsDetail(spuId)
@@ -751,16 +758,19 @@ class App(wx.adv.TaskBarIcon):
                 """与仓库商品未查询到，操作上架"""
                 # 搜索货号，判断有无相关商品
                 if self.enterDepositPlenty:  # 保证金不足跳出循环
-                    self.textLog("查询商品：货号：" + goodsNo)
-                    goods = self.searchGoods(goodsNo)
-                    if len(goods) > 0:
-                        spuId = goods[0]["spuId"]
-                        # 查询商品详情
-                        upGoods = self.upGoods(spuId, item, goodsNo)
-                        if upGoods:
-                            upCount += 1
-                    else:
-                        self.textLog("未查询到商品，跳过出价\n", "error")
+                    if haveGoods:  # 默认True有商品
+                        self.textLog("查询商品：货号：" + goodsNo)
+                        goods = self.searchGoods(goodsNo)
+                        if len(goods) > 0:
+                            spuId = goods[0]["spuId"]
+                            # 查询商品详情
+                            upGoods = self.upGoods(spuId, item, goodsNo)
+                            if upGoods:
+                                upCount += 1
+                        else:
+                            item[3] = False  # 修改商品存在字段
+                            self.textLog("未查询到商品，跳过出价\n", "error")
+                            self.setSaleGoodsText(goodsNo, ["无商品"])
 
         # 统计订单操作，由于每次改价查询都要操作检查订单
         if not self.haveUpdate:
@@ -1085,6 +1095,26 @@ class App(wx.adv.TaskBarIcon):
     """
     # ============================ Helprs 帮助函数 ============================
     """
+
+    def setSaleGoodsText(self, no, lists=None):
+        """
+        设置文本显示数据
+        :param no: 型号
+        :param lists: 需要添加的内容，数组形式["message", "message2"...]
+        :return:
+        """
+        if lists is None:
+            lists = []
+        if len(lists) > 0:
+            text = ""
+            for item in self.saleGoodsList:
+                text += item[0] + "\t" + item[1] + "\t" + item[2]
+                for listItem in lists:
+                    text += "\t" + listItem
+                text += "\n"
+
+            self.saleGoodsListText.delete("1.0", "end")
+            self.saleGoodsListText.insert("end", text)
 
     def timeSleep(self, times):
         """
@@ -1699,19 +1729,25 @@ class App(wx.adv.TaskBarIcon):
             print("{更新}")
         if type == "order":  # 订单
             print("{订单}")
-            self.updateOrder()
         if type == "test_msg":  # 测试消息闪烁提示
             self.newMessage()
         if type == "test":  # 测试
             print("{测试}")
-            # toast = ToastNotifier()
-            # toast.show_toast(title="新订单", msg="您有一条新的订单请注意查看",
-            #                  icon_path="/favicon.ico", duration=5)
-            # winapi.flash(self.SetIcon)
-            # self.stopFlash()
-            # self.search_by_keywords_load_more_data("L3.742.4.96.6", 0)
-
-            # self.logListBoxDom.insert("end", "123", )
+            # asdasdasd	1	9999999
+            # print(self.saleGoodsList)
+            for item in self.saleGoodsList:
+                if item[3]:
+                    print(item)
+                    goods = self.searchGoods(item[0])
+                    print(goods)
+                    if len(goods) > 0:
+                        item[3] = True
+                        print("有商品")
+                    else:
+                        item[3] = False
+                        self.textLog("未查询到商品，跳过出价\n", "error")
+                        self.setSaleGoodsText(item[0], ["无商品"])
+            print(self.saleGoodsList)
 
         print("结束操作")
 
