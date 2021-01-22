@@ -646,7 +646,6 @@ class App(wx.adv.TaskBarIcon):
     #     self.textLog("======================================上架操作结束======================================", "sub")
 
     def upAndChangeTask(self):
-        print(self.orderList)
         """
         上架&更新任务
 
