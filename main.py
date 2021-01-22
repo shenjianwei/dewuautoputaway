@@ -1,3 +1,4 @@
+import _thread
 import json
 import logging
 import math
@@ -33,7 +34,7 @@ class App(wx.adv.TaskBarIcon):
     """
     DEBUGER = True
     # 参数
-    appVersions = "得物APP自动化脚本 V0.5.3"  # 项目信息
+    appVersions = "得物APP自动化脚本 V0.5.6"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
     intervalTime = (10 if DEBUGER else 60)  # 执行间隔时间（秒）
@@ -645,6 +646,7 @@ class App(wx.adv.TaskBarIcon):
     #     self.textLog("======================================上架操作结束======================================", "sub")
 
     def upAndChangeTask(self):
+        print(self.orderList)
         """
         上架&更新任务
 
@@ -953,13 +955,9 @@ class App(wx.adv.TaskBarIcon):
         orderList = self.getOrders()  # 获取订单列表，倒序排列
         self.everyHaveUpdate = False
         if len(orderList) > 0:  # 有订单
-
-            for orderItem in orderList:
-                if not orderItem["subOrderNo"] in self.orderList:
-                    self.newOrderCount += 1
-
             for orderItem in orderList:
                 if not orderItem["subOrderNo"] in self.orderList:  # 在订单中不执行，说明已经执行过了
+                    self.newOrderCount += 1  # 计算新订单总数
                     self.orderList.append(orderItem["subOrderNo"])  # 记录到库存中
                     for saleItem in self.saleGoodsList:  # 查找匹配的库存商品
                         if saleItem[0] == orderItem['articleNumber']:
@@ -986,7 +984,10 @@ class App(wx.adv.TaskBarIcon):
                                 self.saleGoodsListText.delete('1.0', 'end')
                                 self.saleGoodsListText.insert('end', txt)  # 文本写入
 
-                                self.newMessage()  # 打开闪烁提示
+                                try:
+                                    _thread.start_new_thread(self.newMessage, ())  # 打开闪烁消息提示
+                                except:
+                                    print("Error: 无法启动 [ 打开闪烁消息提示 ] 线程")
 
                                 self.haveUpdate = True
                             # else:
@@ -1109,8 +1110,9 @@ class App(wx.adv.TaskBarIcon):
             text = ""
             for item in self.saleGoodsList:
                 text += item[0] + "\t" + item[1] + "\t" + item[2]
-                for listItem in lists:
-                    text += "\t" + listItem
+                if no == item[0] or not item[3]:
+                    for listItem in lists:
+                        text += "\t" + listItem
                 text += "\n"
 
             self.saleGoodsListText.delete("1.0", "end")
