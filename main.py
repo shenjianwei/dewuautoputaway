@@ -13,6 +13,8 @@ import wx.adv
 import hashlib
 import tkinter as tk
 from tkinter import Menu, Toplevel, messagebox
+
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -435,21 +437,27 @@ class App(wx.adv.TaskBarIcon):
         WebDriverWait(driver, 10)
         driver.get(url)
         while True:
-            if self.endThread:
-                driver.close()
+            try:
+                if self.endThread:
+                    driver.close()
+                    self.endThreadIt()
+                time.sleep(2)
+                mouse.position = (1450, 370)
+                mouse.press(Button.left)
+                mouse.move(1450, 373)
+                time.sleep(2)
+                mouse.release(Button.left)
+                WebDriverWait(driver, 5, 0.5).until(
+                    EC.presence_of_element_located((By.CLASS_NAME, 'nc-lang-cnt')))
+                if driver.find_element_by_class_name('nc-lang-cnt').text == '验证通过':
+                    break
+                else:
+                    driver.refresh()
+            except WebDriverException as e:
+                #
                 self.endThreadIt()
-            time.sleep(2)
-            mouse.position = (1450, 370)
-            mouse.press(Button.left)
-            mouse.move(1450, 373)
-            time.sleep(2)
-            mouse.release(Button.left)
-            WebDriverWait(driver, 5, 0.5).until(
-                EC.presence_of_element_located((By.CLASS_NAME, 'nc-lang-cnt')))
-            if driver.find_element_by_class_name('nc-lang-cnt').text == '验证通过':
                 break
-            else:
-                driver.refresh()
+
 
         time.sleep(1)
         driver.find_element_by_xpath(
@@ -861,7 +869,7 @@ class App(wx.adv.TaskBarIcon):
                 self.textLog("查询接口失败：取消商品[" + no + "]上架\n", "error")
             else:
                 minPrice = 0  # 最低出价
-                if "minPriceList" in goodsDetail:  # 检测是否有同款商品在售
+                if "minPriceList" in goodsDetail and len(goodsDetail["minPriceList"]) > 0 and "curMinPrice" in goodsDetail["minPriceList"][0]:  # 检测是否有同款商品在售
                     minPrice = goodsDetail["minPriceList"][0]['curMinPrice']
                     salePrice = self.updateSalePrice(price, minPrice, 0, goodsDetail)  # 上架价格计算
                 else:
@@ -949,7 +957,6 @@ class App(wx.adv.TaskBarIcon):
         从最新的一笔订单，开始等待下一笔订单
         :return:
         """
-        print(self.orderList)
         # self.textLog("======================================订单操作======================================", "sub")
         orderList = self.getOrders()  # 获取订单列表，倒序排列
         self.everyHaveUpdate = False
@@ -1478,10 +1485,10 @@ class App(wx.adv.TaskBarIcon):
         data['type'] = 1
         add = self.dewuRequest("POST", '/newBidding/addOrUpdateSingleBidding', data)
         if add['code'] == 200:
-            logging.info("[上架成功]", "success")
+            logging.info("[上架成功]")
             return True
         else:
-            logging.warning("[上架失败]", "error")
+            logging.error("[上架失败]")
             return add
 
     def updateGoods(self, oldQuantity, price, quantity, skuId, biddingNo):
@@ -1600,11 +1607,13 @@ class App(wx.adv.TaskBarIcon):
                 # self.dewuRequestAgainToken = True
                 self.textLog("Token失效尝试重新获取", "warning")
                 self.token = self.authLogin()
+                if self.endThread:
+                    self.endThreadIt()
                 return self.dewuRequest(method, url, data, requestCount)
             else:
                 logging.error("[接口][请求失败][Token重新获取失效]" + response.text)
                 self.textLog("请求失败：" + resData["msg"], "error")
-                return False
+                return resData
         if resData["code"] == 20900021:
             self.enterDepositPlenty = False
             return resData
@@ -1616,11 +1625,13 @@ class App(wx.adv.TaskBarIcon):
                 self.textLog("查询接口错误，尝试3次重新请求，第 " + str(requestCount + 1) + " 次", "warning")
                 time.sleep(self.dewuRequestWaitTime)  # 等待下次请求时间
                 requestCount += 1
+                if self.endThread:
+                    self.endThreadIt()
                 return self.dewuRequest(method, url, data, requestCount)
             else:
                 logging.error("[接口][请求失败]" + "多次请求失败")
                 self.textLog("请求失败：" + resData["msg"], "error")
-                return False
+                return resData
 
     # GET 请求
     def __get(self, url, params):
