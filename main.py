@@ -39,7 +39,7 @@ class App(wx.adv.TaskBarIcon):
     appVersions = "得物APP自动化脚本 V0.5.6"  # 项目信息
     enterDeposit = 0  # 保证金
     enterDepositPlenty = True  # 保证金是否充足
-    intervalTime = (10 if DEBUGER else 60)  # 执行间隔时间（秒）
+    intervalTime = (10 if DEBUGER else 300)  # 执行间隔时间（秒）
     token = ""  # Token值
     url = 'https://stark.dewu.com'  # 请求域名
     api = url + '/api/v1/h5/biz'  # 请求地址
@@ -103,6 +103,9 @@ class App(wx.adv.TaskBarIcon):
     STOP_FLASH = True
 
     MENU_ID1, MENU_ID2 = wx.NewIdRef(count=2)
+
+    # 请求相关参数
+    TimeOutTime = 15  # 重新请求等待时间
 
     def __init__(self):
         super().__init__()
@@ -732,18 +735,18 @@ class App(wx.adv.TaskBarIcon):
                             # 上架 下架后最低价变动，需重新获取最低价
                             upGoods = self.upGoods(spuId, item, goodsNo, True)
                             # update = self.addGoods(uspSalePrice, 1, size, goodsNo)
-
-                            if upGoods == True:  # 必须 == True，数组[...]判断也是True
-                                successCount += 1
-                                self.textLog("更新价格成功", "success")
-                                                              # biddingNo, minPrice
-                                followPrice = self.calculateFollowPrice(goodsPrice, goodsDetail)
-                                self.textLog("计算跟价价格：" + str(followPrice[0]))
-                                setFollow = self.setFollowPrice(detailItem["biddingNo"], int(followPrice[0] * 100))
-                                if setFollow:
-                                    self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
-                                else:
-                                    self.textLog("设置自动跟价失败\n", "error")
+                            #
+                            # if upGoods == True:  # 必须 == True，数组[...]判断也是True
+                            #     successCount += 1
+                            #     self.textLog("更新价格成功", "success")
+                            #                                   # biddingNo, minPrice
+                            #     followPrice = self.calculateFollowPrice(goodsPrice, goodsDetail)
+                            #     self.textLog("计算跟价价格：" + str(followPrice[0]))
+                            #     setFollow = self.setFollowPrice(detailItem["biddingNo"], int(followPrice[0] * 100))
+                            #     if setFollow:
+                            #         self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
+                            #     else:
+                            #         self.textLog("设置自动跟价失败\n", "error")
                     else:
                         notUpdateCount += 1
                         if uspPrice == 0:
@@ -897,24 +900,19 @@ class App(wx.adv.TaskBarIcon):
                         self.textLog(("改价成功" if update else "上架成功"), "success")
 
                         goodsDetail = self.getGoodsDetail(spuId)
-                        if "detailResponseList" in goodsDetail:  # 判断商品是否已经有货出价中
-                            # 设置自动跟价
-                            #                               biddingNo, minPrice
+                        # 设置自动跟价
+                        if "detailResponseList" in goodsDetail and len(goodsDetail["detailResponseList"]) > 0 and "poundageInfoList" in goodsDetail and len(goodsDetail["poundageInfoList"]) > 0 and "poundageDetailInfoList" in goodsDetail["poundageInfoList"][0]:  # goodsDetail["poundageInfoList"][0]["poundageDetailInfoList"]
                             followPrice = self.calculateFollowPrice(price, goodsDetail)
                             self.textLog("计算跟价价格：" + str(followPrice[0]))
-                            if len(goodsDetail["detailResponseList"]) > 0:
-                                setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(followPrice[0] * 100))
-                                if setFollow:
-                                    self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
-                                    return True
-                                else:
-                                    self.textLog("设置自动跟价失败\n", "error")
-                                    return False
+                            setFollow = self.setFollowPrice(goodsDetail["detailResponseList"][0]["biddingNo"], int(followPrice[0] * 100))
+                            if setFollow:
+                                self.textLog("设置自动跟价成功，跟价价格：" + str(followPrice[0]) + "除去手续费到手价：" + str(followPrice[1]) + "\n", "success")
+                                return True
                             else:
-                                self.textLog("设置自动跟价失败, 未找到biddingNo参数\n", "error")
+                                self.textLog("设置自动跟价失败\n", "error")
                                 return False
                         else:
-                            self.textLog("未查询到相关上架商品可供设置自动跟价\n", "error")
+                            self.textLog("设置自动跟价失败, 未找到必须参数\n", "error")
                             return False
 
                     else:
@@ -1639,8 +1637,26 @@ class App(wx.adv.TaskBarIcon):
         logging.info(
             "[接口][请求][请求地址]" + self.api + url + "[请求参数]" + str(params) + "[请求头]" + str(self.__headers()))  # 日志记录请求
         url = url if bool(re.search("https://", url)) else self.api + url
-        res = requests.get(url, params=params, headers=self.__headers())
-        return res
+
+        try:
+            res = requests.get(url, params=params, headers=self.__headers())
+            self.TimeOutTime = 15
+            return res
+        except Exception as e:
+            print("请求超时, 等待" + str(self.TimeOutTime) + "秒后重新请求")
+            self.textLog("请求超时, 等待" + str(self.TimeOutTime) + "秒后重新请求", "warning")
+            time.sleep(self.TimeOutTime)
+            if self.TimeOutTime == 15:
+                self.TimeOutTime = 60
+            elif self.TimeOutTime == 60:
+                self.TimeOutTime = 300
+            elif self.TimeOutTime == 300:
+                self.TimeOutTime = 1800
+            elif self.TimeOutTime == 1800:
+                self.TimeOutTime = 3600
+            elif self.TimeOutTime == 3600:
+                self.TimeOutTime = 3600 * 3
+            self.__get(url, params)
 
     # POST 请求
     def __post(self, url, data):
@@ -1648,8 +1664,26 @@ class App(wx.adv.TaskBarIcon):
         logging.info(
             "[接口][请求][请求地址]" + self.api + url + "[请求参数]" + str(data) + "[请求头]" + str(self.__headers()))  # 日志记录请求
         url = url if bool(re.search("https://", url)) else self.api + url
-        res = requests.post(url, data=json.dumps(data), headers=self.__headers())
-        return res
+        try:
+            res = requests.post(url, data=json.dumps(data), headers=self.__headers())
+            self.TimeOutTime = 15
+            return res
+        except Exception as e:
+            print("请求超时, 等待" + str(self.TimeOutTime) + "秒后重新请求")
+            self.textLog("请求超时, 等待" + str(self.TimeOutTime) + "秒后重新请求", "warning")
+            time.sleep(self.TimeOutTime)
+            if self.TimeOutTime == 15:
+                self.TimeOutTime = 60
+            elif self.TimeOutTime == 60:
+                self.TimeOutTime = 300
+            elif self.TimeOutTime == 300:
+                self.TimeOutTime = 1800
+            elif self.TimeOutTime == 1800:
+                self.TimeOutTime = 3600
+            elif self.TimeOutTime == 3600:
+                self.TimeOutTime = 3600 * 3
+            self.__get(url, data)
+
 
     # 请求参数处理
     def __request(self, params):
