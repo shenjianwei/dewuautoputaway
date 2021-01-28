@@ -210,6 +210,8 @@ class App(wx.adv.TaskBarIcon):
             tk.Button(self.root, text="测试", command=lambda: self.thread_it(App.test, self, "test")).pack(side="left")
 
         # 初始化获得Token
+        self.textLog("正在初始化程序\n", "info")
+        self.textLog("开始获取校验Token\n")
         self.thread_it(App.getToken, self)
         self.root.protocol("WM_DELETE_WINDOW", self.callbackClose)
         self.root.mainloop()
